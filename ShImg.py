@@ -85,7 +85,7 @@ def showImg(cam_q, is_running: Value, form: list, **kwargs) -> None:
         else:
             buf = cam_q.recv_bytes()
             img = np.ndarray(shape, dtype=dtype, buffer=buf)
-            screen.fill([255, 255, 255])
+            rects=[screen.fill([255, 255, 255])]
             # img = np.transpose(img, tran)
 
             if is_calibrate:
@@ -120,7 +120,7 @@ def showImg(cam_q, is_running: Value, form: list, **kwargs) -> None:
                         np.save(f"bias_{sc_shape}.npy", bias)
                     else:
                         label_point = label_points[points_num]
-                        pygame.draw.circle(screen, (0, 0, 0), label_point, ts_radius)
+                        rects.append(pygame.draw.circle(screen, (0, 0, 0), label_point, ts_radius))
 
             elif mode == "pass" or mode == 'debug':
                 img = np.transpose(img, tran)[::-1, ::-1, ...]
@@ -133,7 +133,7 @@ def showImg(cam_q, is_running: Value, form: list, **kwargs) -> None:
                     img = np.broadcast_to(img, (img.shape[0], img.shape[1], 3))
                 frame = pygame.image.frombuffer(img.tobytes(), shape[0:2], 'RGB')
                 frame = pygame.transform.scale(frame, tuple(sc_shape))
-                screen.blit(frame, (0, 0))
+                rects.append(screen.blit(frame, (0, 0)))
 
             elif mode == "inter":
                 img = bg.apply(img)
@@ -142,12 +142,12 @@ def showImg(cam_q, is_running: Value, form: list, **kwargs) -> None:
                 inter_fr_pos = fr_pos
                 # inter_fr_pos = robot_fish(fr_pos, rf_state, rf_config)
                 inter_fr_pos = np.ceil(inter_fr_pos)
-                pygame.draw.circle(screen, (0, 0, 0), inter_fr_pos, 50)
+                rects.append(pygame.draw.circle(screen, (0, 0, 0), inter_fr_pos, 50))
 
             if saving.value:
-                pygame.draw.circle(screen, (255, 0, 0), (ts_radius, ts_radius), ts_radius * 0.3)
+                rects.append(pygame.draw.circle(screen, (255, 0, 0), (ts_radius, ts_radius), ts_radius * 0.3))
         pgClock.tick(pgFps)
-        pygame.display.update()
+        pygame.display.update(rects)
 
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:

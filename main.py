@@ -4,24 +4,23 @@
 #   2. save img from camera
 #   3. show the image which interact with fish
 
-from multiprocessing import Process, Value, Pipe, Manager
+from multiprocessing import Process, Value, Queue, Manager
 from Cam import grabCam
 from ctypes import c_bool
 from ShImg import showImg
 import time
 
 if __name__ == "__main__":
-    cam_r, cam_s = Pipe()  # the Queue for camera img
-    show_s, show_r = Pipe()
+    cam_q = Queue()  # the Queue for camera img
     is_Running = Value(c_bool, True)
     saving = Value(c_bool, False)
 
     man = Manager()
     form = man.list([None, None])
-    camera = Process(args=(cam_s, is_Running, form, ), target=grabCam,
-                     kwargs={'mode': "video", "c_num": 1, "secs": 1000, "saving": saving})
-    windows = Process(target=showImg, args=(cam_r, is_Running, form,),
-                      kwargs={'mode': "inter", 'calibrate': True, "full": False, "saving": saving})
+    camera = Process(args=(cam_q, is_Running, form, ), target=grabCam,
+                     kwargs={'mode': "video", "c_num": 1, "secs": 10, "saving": saving})
+    windows = Process(target=showImg, args=(cam_q, is_Running, form,),
+                      kwargs={'mode': "debug", 'calibrate': False, "full": False, "saving": saving})
 
     windows.start()
     camera.start()

@@ -1,9 +1,8 @@
 import numpy as np
 import time
-from pypylon import pylon
-from multiprocessing import Pool, Value
+#from pypylon import pylon
+from multiprocessing import Pool, Value, Queue
 from ctypes import c_bool
-from multiprocessing.connection import Connection
 import cv2
 import os
 
@@ -13,7 +12,7 @@ def savebuff(buff, s, shape, dtype=np.float, savepath=""):
     np.save(os.path.join(savepath, f"frame_{s}.npy"), img)
 
 
-def grabCam(cam_q: Connection, is_running, form, mode="camera", FrameRate=30, secs=10, c_num=0, savepath="",
+def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=30, secs=10, c_num=0, savepath="",
             saving=Value(c_bool, False)):
     print(f"The camera is action in {mode} mode")
     """
@@ -49,9 +48,10 @@ def grabCam(cam_q: Connection, is_running, form, mode="camera", FrameRate=30, se
         while video.isOpened():
             ret, frame = video.read()
             s += 1
-            cam_q.send_bytes(frame.tobytes())
+            cam_q.put_nowait(frame.tobytes())
             if time.time() - start > secs:
                 is_running.value = False
+
                 break
         print("stop")
         return
@@ -125,7 +125,7 @@ def grabCam(cam_q: Connection, is_running, form, mode="camera", FrameRate=30, se
                 counter = counter - 1
                 if grabResult.GrabSucceeded():
                     buff = grabResult.GetBuffer()
-                    cam_q.send_bytes(buff)
+                    cam_q.put_nowait(buff)
                     if saving.value:
                         pool.apply_async(savebuff, args=(buff, s, shape,), kwds={"dtype": dtype, "savepath": savepath})
                     s += 1

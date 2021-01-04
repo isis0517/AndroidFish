@@ -21,41 +21,54 @@ def grabCam(cam_q, l):
 def getCam(cam_q, l):
     
     for s in range(l):
-        sleep(0.1)
         buff = cam_q.recv_bytes()
         #print(s,frame.shape)
 
 def grabcamQ(q, l):
-    start = time.time()
     c = np.random.randint(255, size=(4000,2000,3), dtype=np.uint8)
     cb = c.tobytes()
     for s in range(l):
         q.put_nowait(cb)
-    print(f"use queue : {time.time()-start:.5f}")
 
 def getQ(q, l):
     for s in range(l):
-        sleep(0.1)
-        buff = q.get()
-        frame = np.frombuffer(buff, dtype=np.uint8)
+        try:
+            buf = q.get()
+        except:
+            pass
+        frame = np.frombuffer(buf, dtype=np.uint8)
         #print(s,frame.shape)
+
+def grabcamQQ(q, l):
+    c = np.random.randint(255, size=(4000,2000,3), dtype=np.uint8)
+    for s in range(l):
+        q.put_nowait(c)
+
+def getQQ(q, l):
+    for s in range(l):
+        try:
+            frame = q.get()
+        except:
+            pass
 
 def test(a):
     a['123'] = 11
 
 if __name__ == "__main__":
     sleep(2)
-    a, b = Pipe()
-    l = 100
-    window = Process(target=grabCam, args=(a,l,))
-    console = Process(target=getCam, args=(b,l,))
+
+    q = Queue()
+    l = 200
+    window = Process(target=grabcamQQ, args=(q,l,))
+    console = Process(target=getQQ, args=(q,l,))
     start = time.time()
     window.start()
     console.start()
 
+    console.join()
     window.join()
+    print(f"use queue : {time.time()-start:.5f}")
 
-    sleep(2)
 
     q = Queue()
 
@@ -65,10 +78,9 @@ if __name__ == "__main__":
     window.start()
     console.start()
 
-    """console.join()  #等待console結束，主程序才會繼續
-    window.terminate()  #一旦console join, 摧毀window程序"""
-
+    console.join()
     window.join()
+    print(f"use queue (buff) : {time.time()-start:.5f}")
 
 
     sleep(2)

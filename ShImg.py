@@ -48,9 +48,9 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
     pgClock = pygame.time.Clock()
     init_size = [1000, 1000]
     flags = 0  # | pygame.DOUBLEBUF   # | pygame.SCALED #pygame.HWSURFACE | pygame.FULLSCREEN pygame.RESIZABLE ||
-    # pygame.HWSURFACE | pygame.DOUBLEBUF pygame.SHOWN
+    # pygame.HWSURFACE | pygame.DOUBLEBUF
     if full:
-        flags = flags | pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF
+        flags = flags | pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.SHOWN
         init_size = [0, 0]
     screen = pygame.display.set_mode(init_size, display=display, flags=flags)
     screen.fill([255, 255, 255])

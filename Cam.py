@@ -1,6 +1,6 @@
 import numpy as np
 import time
-#from pypylon import pylon
+from pypylon import pylon
 from multiprocessing import Pool, Value, Queue
 from ctypes import c_bool
 import cv2
@@ -14,6 +14,9 @@ def savebuff(buff, s, shape, dtype=np.float, savepath=""):
 
 def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=30, secs=10, c_num=0, savepath="",
             saving=Value(c_bool, False)):
+    if not os.path.isdir(os.path.join(savepath, "frames")):
+        os.mkdir(os.path.join(savepath, "frames"))
+        savepath = os.path.join(savepath, "frames")
     print(f"The camera is action in {mode} mode")
     """
     args:

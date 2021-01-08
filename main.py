@@ -20,12 +20,13 @@ if __name__ == "__main__":
     camera = Process(args=(cam_q, is_Running, form, ), target=grabCam,
                      kwargs={'mode': "video", "c_num": 1, "secs": 20, "saving": saving})
     windows = Process(target=showImg, args=(cam_q, is_Running, form,),
-                      kwargs={'mode': "debug", 'calibrate': False, "full": False, "saving": saving})
+                      kwargs={'mode': "debug", 'calibrate': False, "full": True, "saving": saving})
 
     windows.start()
     camera.start()
     while True:
         time.sleep(1)
+
         if not (camera.is_alive() and windows.is_alive()):
             windows.terminate()
             camera.terminate()

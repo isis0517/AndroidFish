@@ -155,7 +155,7 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
             inter_fr_pos = fr_pos
             # inter_fr_pos = robot_fish(fr_pos, rf_state, rf_config)
             inter_fr_pos = np.ceil(inter_fr_pos)
-            rects.append(pygame.draw.circle(screen, (0, 0, 0), inter_fr_pos, 50))
+            rects.append(pygame.draw.circle(screen, (200, 20, 20), inter_fr_pos, 30))
 
         if saving.value:
             rects.append(pygame.draw.circle(screen, (255, 0, 0), (ts_radius, ts_radius), ts_radius * 0.3))

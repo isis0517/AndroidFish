@@ -24,7 +24,7 @@ def npy2avi(path, savepath=""):
     flist = []
     for filename in tiflist:
         flist.append(os.path.join(path, filename))
-    img = np.load(filename)
+    img = np.load(flist[0])
     size = (img.shape[1], img.shape[0])
     video = cv2.VideoWriter(os.path.join(savepath, "video.avi"), cv2.VideoWriter_fourcc(*'MPEG'),
                             30, size, isColor=False)

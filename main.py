@@ -20,7 +20,7 @@ if __name__ == "__main__":
     camera = Process(args=(cam_q, is_Running, form, ), target=grabCam,
                      kwargs={'mode': "video", "c_num": 1, "secs": 20, "saving": saving})
     windows = Process(target=showImg, args=(cam_q, is_Running, form,),
-                      kwargs={'mode': "debug", 'calibrate': False, "full": True, "saving": saving})
+                      kwargs={'mode': "inter", 'calibrate': False, "full": True, "saving": saving})
 
     windows.start()
     camera.start()

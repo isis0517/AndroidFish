@@ -73,9 +73,18 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
     background = np.zeros(shape)
     b_num = 1
 
+    # try to load the Cm and bias
+    if not is_calibrate:
+        try:
+            cM = np.load(f"cM_{sc_shape}.npy")
+            bias = np.load(f"bias_{sc_shape}.npy")
+        except:
+            cM = np.identity(2)
+            bias = np.zeros(2)
+
     # other init:
     im_pos = (shape[0] / 2, shape[1] / 2)
-    rf_config = [1, 0.5]
+    rf_config = [0, 0]
     rf_state = dict({"center": np.array(sc_shape) // 2, 'damp': 0.5, 'pos': np.array(sc_shape) // 2})
 
     while is_running.value:
@@ -153,9 +162,9 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
             im_pos = np.array(label_pos(img, pos=im_pos))
             fr_pos = np.dot(cM, im_pos) + bias
             inter_fr_pos = fr_pos
-            # inter_fr_pos = robot_fish(fr_pos, rf_state, rf_config)
+            inter_fr_pos = robot_fish(fr_pos, rf_state, rf_config)
             inter_fr_pos = np.ceil(inter_fr_pos)
-            rects.append(pygame.draw.circle(screen, (200, 20, 20), inter_fr_pos, 30))
+            rects.append(pygame.draw.circle(screen, (30, 100, 10), inter_fr_pos, 30))
 
         if saving.value:
             rects.append(pygame.draw.circle(screen, (255, 0, 0), (ts_radius, ts_radius), ts_radius * 0.3))
@@ -183,7 +192,7 @@ def robot_fish(mate_pos, state: dict, config: list):
     cen = state.get('center', np.array([100, 100]))
     damp = state.get('damp', 0.2)
 
-    a = config[0] * (mate_pos - pos) + config[1] * (cen - pos) + np.random.normal(0, 100, size=2) - v * damp
+    a = config[0] * (mate_pos - pos) + config[1] * (cen - pos) + np.random.normal(0, 200, size=2) - v * damp
     v = v + a * 0.033
     pos = pos + v * 0.033
 

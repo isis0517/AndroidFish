@@ -53,7 +53,7 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
         flags = flags | pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.SHOWN
         init_size = [0, 0]
     screen = pygame.display.set_mode(init_size, display=display, flags=flags)
-    screen.fill([255, 255, 255])
+    screen.fill([150, 150, 150])
     sc_shape = np.array(pygame.display.get_window_size())
 
     # calibration setting
@@ -87,6 +87,13 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
     rf_config = [0, 0]
     rf_state = dict({"center": np.array(sc_shape) // 2, 'damp': 0.5, 'pos': np.array(sc_shape) // 2})
 
+    # traj init
+    if mode == 'traj':
+        traj_q = queue.Queue()
+        traj = np.load("0111_trj.npy")
+        for pos in traj:
+            traj_q.put(pos)
+
     while is_running.value:
 
         for event in pygame.event.get():
@@ -101,11 +108,11 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
                         mode = kwargs.get('mode', "pass")
                 if event.key == pygame.K_s:
                     saving.value = not saving.value
-        rects = [screen.fill([255, 255, 255])]
+        rects = [screen.fill([150, 150, 150])]
 
         try:
             buf = cam_q.get(True, 0.01)
-        except queue.Empty:
+        except queue.Empty as e:
             continue
         img = np.ndarray(shape, dtype=dtype, buffer=buf)
         # img = np.transpose(img, tran)
@@ -165,6 +172,11 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
             inter_fr_pos = robot_fish(fr_pos, rf_state, rf_config)
             inter_fr_pos = np.ceil(inter_fr_pos)
             rects.append(pygame.draw.circle(screen, (30, 100, 10), inter_fr_pos, 30))
+
+        elif mode == "traj":
+            pos = traj_q.get()
+            pos = (pos[0]*sc_shape[0], pos[1]*sc_shape[1])
+            rects.append(pygame.draw.circle(screen, (30, 100, 10), pos, 30))
 
         if saving.value:
             rects.append(pygame.draw.circle(screen, (255, 0, 0), (ts_radius, ts_radius), ts_radius * 0.3))

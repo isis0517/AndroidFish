@@ -52,6 +52,7 @@ def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=30, secs=10
             ret, frame = video.read()
             s += 1
             cam_q.put_nowait(frame.tobytes())
+            time.sleep(0.03)
             if time.time() - start > secs:
                 is_running.value = False
 

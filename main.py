@@ -18,9 +18,9 @@ if __name__ == "__main__":
     man = Manager()
     form = man.list([None, None])
     camera = Process(args=(cam_q, is_Running, form, ), target=grabCam,
-                     kwargs={'mode': "camera", "c_num": 1, "secs": 20, "saving": saving})
+                     kwargs={'mode': "video", "c_num": 1, "secs": 20, "saving": saving})
     windows = Process(target=showImg, args=(cam_q, is_Running, form,),
-                      kwargs={'mode': "inter", 'calibrate': False, "full": True, "saving": saving})
+                      kwargs={'mode': "traj", 'calibrate': False, "full": True, "saving": saving})
 
     windows.start()
     camera.start()

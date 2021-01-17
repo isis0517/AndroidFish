@@ -46,7 +46,7 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
     # pygame config
     pygame.display.set_caption("OpenCV camera stream on Pygame")
     pgClock = pygame.time.Clock()
-    init_size = [1000, 1000]
+    init_size = [2000, 2000]
     flags = 0  # | pygame.DOUBLEBUF   # | pygame.SCALED #pygame.HWSURFACE | pygame.FULLSCREEN pygame.RESIZABLE ||
     # pygame.HWSURFACE | pygame.DOUBLEBUF
     if full:

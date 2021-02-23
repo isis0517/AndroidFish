@@ -46,14 +46,14 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
     # pygame config
     pygame.display.set_caption("OpenCV camera stream on Pygame")
     pgClock = pygame.time.Clock()
-    init_size = [2000, 2000]
-    flags = 0  # | pygame.DOUBLEBUF   # | pygame.SCALED #pygame.HWSURFACE | pygame.FULLSCREEN pygame.RESIZABLE ||
+    init_size = [1200, 1200]
+    flags = pygame.NOFRAME   # | pygame.DOUBLEBUF   # | pygame.SCALED #pygame.HWSURFACE | pygame.FULLSCREEN pygame.RESIZABLE ||
     # pygame.HWSURFACE | pygame.DOUBLEBUF
     if full:
         flags = flags | pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.SHOWN
         init_size = [0, 0]
     screen = pygame.display.set_mode(init_size, display=display, flags=flags)
-    screen.fill([150, 150, 150])
+    screen.fill([200, 180, 200])
     sc_shape = np.array(pygame.display.get_window_size())
 
     # calibration setting
@@ -108,7 +108,7 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
                         mode = kwargs.get('mode', "pass")
                 if event.key == pygame.K_s:
                     saving.value = not saving.value
-        rects = [screen.fill([150, 150, 150])]
+        rects = [screen.fill([200, 180, 200])]
 
         try:
             buf = cam_q.get(True, 0.01)
@@ -175,8 +175,11 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
 
         elif mode == "traj":
             pos = traj_q.get()
+            if traj_q.empty():
+                for pos in traj:
+                    traj_q.put(pos)
             pos = (pos[0]*sc_shape[0], pos[1]*sc_shape[1])
-            rects.append(pygame.draw.circle(screen, (30, 100, 10), pos, 30))
+            rects.append(pygame.draw.circle(screen, (20, 20, 20), pos, 10))
 
         if saving.value:
             rects.append(pygame.draw.circle(screen, (255, 0, 0), (ts_radius, ts_radius), ts_radius * 0.3))

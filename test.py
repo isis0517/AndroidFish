@@ -54,6 +54,10 @@ def test(a):
     a['123'] = 11
 
 if __name__ == "__main__":
+
+    img = np.zeros((100,200), dtype='uint8')
+    print(cv2.resize(img, (20,10)).shape)
+    exit()
     sleep(2)
 
     q = Queue()

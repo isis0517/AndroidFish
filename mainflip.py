@@ -1,19 +1,14 @@
-from multiprocessing import Process, Value, Queue, Manager
-from ctypes import c_bool
-import time
-import pygame
-import cv2
+from multiprocessing import Pool, Process, Value, Queue, Manager
+import os
 import queue
-import numpy as np
-
 import numpy as np
 import time
 from pypylon import pylon
-from multiprocessing import Pool, Value, Queue
 from ctypes import c_bool
 import cv2
-import os
 
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+import pygame
 
 def savebuff(buff, s, shape, dtype=np.float, savepath=""):
     img = np.ndarray(shape, dtype=dtype, buffer=buff)
@@ -22,10 +17,12 @@ def savebuff(buff, s, shape, dtype=np.float, savepath=""):
 
 def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=10, secs=10, c_num=0, savepath="",
             saving=Value(c_bool, False)):
+
     if not os.path.isdir(os.path.join(savepath, "frames")):
         os.mkdir(os.path.join(savepath, "frames"))
         savepath = os.path.join(savepath, "frames")
     print(f"The camera is action in {mode} mode")
+
     """
     args:
         cam_q : the Pipe comunnecate with cam2img
@@ -39,8 +36,10 @@ def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=10, secs=10
         secs : recording time
         c_num : the number of camera
     """
-
+    #init
     shape, dtype = (0, 0), 'uint8'
+    sf_bin = False
+
     if mode == "video":
 
         video = cv2.VideoCapture("F_F_03.avi")
@@ -87,26 +86,18 @@ def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=10, secs=10
             exit()
 
         camera.Open()
+
+        try :
+            camera.BinningVertical.SetValue(1)
+            camera.BinningHorizontal.SetValue(1)
+        except :
+            pass
+
         camera.AcquisitionFrameRateEnable.SetValue(True)
         camera.AcquisitionFrameRate.SetValue(FrameRate)
-        #camera.BinningVertical.SetValue(1)
-        #camera.BinningHorizontal.SetValue(1)
 
-        PixelFormat = camera.PixelFormat.GetValue()
-
-        print("resolution : ", f"{camera.Width.GetValue()}X{camera.Height.GetValue()}")
-        print("Format : ", PixelFormat)
-
-        #camera.BinningVerticalMode.SetValue("Average")
-        #camera.BinningHorizontalMode.SetValue("Average")
-
-        #if camera.Width.GetValue() / 1000 > 1 or camera.Height.GetValue() / 1000 > 1:
-            #rat = max(camera.Height.GetValue() / 1000, camera.Width.GetValue() / 1000)
-            #print("binning rate = ", rat)
-            #camera.BinningVertical.SetValue(int(rat))
-            #camera.BinningHorizontal.SetValue(int(rat))
-
-        grabResult = camera.GrabOne(1000)
+        # grabone frame to get shape and pixelfromat
+        grabResult = camera.GrabOne(10000)
         if grabResult.GrabSucceeded():
             pt = grabResult.GetPixelType()
             if pylon.IsPacked(pt):
@@ -119,6 +110,28 @@ def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=10, secs=10
         else:
             print("grab Failed")
             exit()
+
+        print("resolution : ", f"{shape}")
+        print("Format : ", pixelformat)
+
+        # check for binning rate
+        if camera.Width.GetValue() / 1000 > 1 or camera.Height.GetValue() / 1000 > 1:
+
+            try:
+                camera.BinningVertical.GetValue()
+            except Exception as e:
+                sf_bin = True
+                shape = (shape[0]//2, shape[1]//2)
+                print(f"the exception {e} is raised, turn to software binning (cv2.resize). The new shape = {shape}")
+
+            if not sf_bin:
+                rat = int(max(camera.Height.GetValue() / 1000, camera.Width.GetValue() / 1000))
+                camera.BinningVerticalMode.SetValue("Average")
+                camera.BinningHorizontalMode.SetValue("Average")
+                camera.BinningVertical.SetValue(rat)
+                camera.BinningHorizontal.SetValue(rat)
+                shape = (camera.Width.GetValue(), camera.Height.GetValue())
+                print(f"hardware binning rate = {rat} and new shape = {shape}")
 
         form[0] = shape
         form[1] = dtype
@@ -137,9 +150,11 @@ def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=10, secs=10
                 counter = counter - 1
                 if grabResult.GrabSucceeded():
                     buff = grabResult.GetBuffer()
+                    if sf_bin:
+                        img = np.ndarray(shape, dtype=dtype, buffer=buff)
+                        img = cv2.resize(img, (shape[1], shape[0]))
+                        buff = img.tobytes()
                     cam_q.put_nowait(buff)
-                    if saving.value:
-                        pool.apply_async(savebuff, args=(buff, s, shape,), kwds={"dtype": dtype, "savepath": savepath})
                     s += 1
 
                 grabResult.Release()
@@ -150,8 +165,9 @@ def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=10, secs=10
                     break
             # Releasing the resource
             camera.StopGrabbing()
-            camera.BinningVertical.SetValue(1)
-            camera.BinningHorizontal.SetValue(1)
+            if not sf_bin:
+                camera.BinningVertical.SetValue(1)
+                camera.BinningHorizontal.SetValue(1)
             camera.Close()
             cam_q.close()
 
@@ -197,7 +213,6 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
     screen.fill([150, 150, 150])
     sc_shape = np.array(pygame.display.get_window_size())
 
-
     while is_running.value:
 
         for event in pygame.event.get():
@@ -218,9 +233,7 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
             buf = cam_q.get(True, 0.01)
         except queue.Empty as e:
             continue
-        img = np.ndarray(shape, dtype=dtype, buffer=buf)
-
-        img = np.transpose(img, tran)[::-1, ::-1, ...]
+        img = buf
         img = np.rot90(img)
 
         #img = cv2.cvtColor(img, cv2.COLOR_BayerGB2RGB)

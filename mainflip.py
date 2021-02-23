@@ -15,7 +15,7 @@ def savebuff(buff, s, shape, dtype=np.float, savepath=""):
     np.save(os.path.join(savepath, f"frame_{s}.npy"), img)
 
 
-def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=10, secs=10, c_num=0, savepath="",
+def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=30, secs=10, c_num=0, savepath="",
             saving=Value(c_bool, False)):
 
     if not os.path.isdir(os.path.join(savepath, "frames")):
@@ -107,12 +107,14 @@ def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=10, secs=10
                 shape, dtype, pixelformat = grabResult.GetImageFormat(pt)
                 _ = grabResult.GetImageBuffer()
 
+            ori_shape = shape
+
         else:
             print("grab Failed")
             exit()
 
         print("resolution : ", f"{shape}")
-        print("Format : ", pixelformat)
+        print("Format : ", camera.PixelFormat.GetValue())
 
         # check for binning rate
         if camera.Width.GetValue() / 1000 > 1 or camera.Height.GetValue() / 1000 > 1:
@@ -122,7 +124,7 @@ def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=10, secs=10
             except Exception as e:
                 sf_bin = True
                 shape = (shape[0]//2, shape[1]//2)
-                print(f"the exception {e} is raised, turn to software binning (cv2.resize). The new shape = {shape}")
+                print(f"the exception :  {e} \nTurn to software binning (cv2.resize). The new shape = {shape}")
 
             if not sf_bin:
                 rat = int(max(camera.Height.GetValue() / 1000, camera.Width.GetValue() / 1000))
@@ -151,7 +153,7 @@ def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=10, secs=10
                 if grabResult.GrabSucceeded():
                     buff = grabResult.GetBuffer()
                     if sf_bin:
-                        img = np.ndarray(shape, dtype=dtype, buffer=buff)
+                        img = np.ndarray(ori_shape, dtype=dtype, buffer=buff)
                         img = cv2.resize(img, (shape[1], shape[0]))
                         buff = img.tobytes()
                     cam_q.put_nowait(buff)
@@ -171,7 +173,7 @@ def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=10, secs=10
             camera.Close()
             cam_q.close()
 
-        print("stop")
+        print("END")
         return
 
 def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
@@ -233,12 +235,12 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
             buf = cam_q.get(True, 0.01)
         except queue.Empty as e:
             continue
-        img = buf
-        img = np.rot90(img)
+        img = np.ndarray(dtype=dtype, shape=shape, buffer=buf)
+        #img = np.rot90(img)
 
         #img = cv2.cvtColor(img, cv2.COLOR_BayerGB2RGB)
 
-        img = bg.apply(img)
+        #img = bg.apply(img)
 
         if img.ndim < 3:
             img = np.broadcast_to(img[:, :, np.newaxis], (img.shape[0], img.shape[1], 3))
@@ -260,7 +262,7 @@ if __name__ == "__main__":
     man = Manager()
     form = man.list([None, None])
     camera = Process(args=(cam_q, is_Running, form, ), target=grabCam,
-                     kwargs={'mode': "camera", "c_num": 0, "secs": 600, "saving": saving})
+                     kwargs={'mode': "camera", "c_num": 0, "secs": 100, "saving": saving})
     windows = Process(target=showImg, args=(cam_q, is_Running, form,),
                       kwargs={'mode': "traj", 'calibrate': False, "full": False, "saving": saving})
 

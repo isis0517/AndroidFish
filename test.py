@@ -57,6 +57,10 @@ if __name__ == "__main__":
 
     img = np.zeros((100,200), dtype='uint8')
     print(cv2.resize(img, (20,10)).shape)
+
+    a = np.arange(12).reshape(3,2,2)
+    print(np.rot90(a))
+
     exit()
     sleep(2)
 

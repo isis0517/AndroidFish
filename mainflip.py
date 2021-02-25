@@ -46,8 +46,8 @@ def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=30, secs=10
 
         video = cv2.VideoCapture("F_F_03.avi")
 
-        shape = (
-                 int(video.get(cv2.CAP_PROP_FRAME_WIDTH)), int(video.get(cv2.CAP_PROP_FRAME_HEIGHT)), 3)
+        shape = (int(video.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+                 int(video.get(cv2.CAP_PROP_FRAME_WIDTH)), 3)
         dtype = 'uint8'
         form[0] = shape
         form[1] = dtype
@@ -136,7 +136,7 @@ def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=30, secs=10
                 shape = (camera.Width.GetValue(), camera.Height.GetValue())
                 print(f"hardware binning rate = {rat} and new shape = {shape}")
 
-        form[0] = shape
+        form[0] = (shape[1], shape[0])
         form[1] = dtype
         counter = FrameRate * secs
 
@@ -241,21 +241,17 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
         except queue.Empty as e:
             continue
         img = np.ndarray(dtype=dtype, shape=shape, buffer=buf)
-        #img = np.rot90(img)
-        #img = cv2.cvtColor(img, cv2.COLOR_BayerGB2RGB)
         if not mode == 'debug':
             img = bg.apply(img)
         kernel = np.array([[0,1,0],
                            [1,1,1],
-                           [0,1,0]]).astype(np.uint8)
+                           [0,1,0]]).astype(np.uint8)*10
         img = cv2.erode(img, kernel, iterations=1)
         img = cv2.dilate(img, kernel, iterations=1)
-
-        if img.ndim < 3:
-            img = np.broadcast_to(img[:, :, np.newaxis], (img.shape[0], img.shape[1], 3))
-        if img.shape[2] == 1:
-            img = np.broadcast_to(img, (img.shape[0], img.shape[1], 3))
-        frame = pygame.image.frombuffer(img.tobytes(), shape[0:2], 'RGB')
+        back = np.full(shape, 120, dtype='uint8')
+        back[:, :, 1] += img//2
+        back = np.rot90(back)
+        frame = pygame.surfarray.make_surface(back)
         #frame = pygame.transform.scale(frame, tuple(sc_shape))
         rects.append(screen.blit(frame, (0, 0)))
 

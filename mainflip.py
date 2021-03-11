@@ -136,6 +136,8 @@ def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=30, secs=10
                 shape = (camera.Width.GetValue(), camera.Height.GetValue())
                 print(f"hardware binning rate = {rat} and new shape = {shape}")
 
+
+
         form[0] = (shape[1], shape[0])
         form[1] = dtype
         counter = FrameRate * secs

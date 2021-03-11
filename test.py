@@ -155,6 +155,8 @@ def test(a):
 
 if __name__ == "__main__":
 
+    test_2can()
+
     img = np.zeros((100,200), dtype='uint8')
     print(cv2.resize(img, (20,10)).shape)
 

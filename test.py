@@ -26,10 +26,10 @@ def test_2can():
     # image event handlers. Please note that this is not shown in this example.
     # ============================================================================
 
-    os.environ["PYLON_CAMEMU"] = "3"
+    os.environ["PYLON_CAMEMU"] = "2"
 
     # Number of images to be grabbed.
-    countOfImagesToGrab = 10
+    countOfImagesToGrab = 10*4
 
     # Limits the amount of cameras used for grabbing.
     # It is important to manage the available bandwidth when grabbing with multiple cameras.

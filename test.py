@@ -107,6 +107,46 @@ def test_2can():
     # Comment the following two lines to disable waiting on exit.
     sys.exit(exitCode)
 
+def Test2():
+
+    os.environ["PYLON_CAMEMU"] = "2"
+    try:
+        T1 = pylon.TlFactory.GetInstance()
+        lstDevices = T1.EnumerateDevices()
+        if len(lstDevices) == 0:
+            print("no camera is detected")
+        if len(lstDevices) <= 0:
+            print(f"ther is no camera")
+
+        camera1 = pylon.InstantCamera(T1.CreateFirstDevice(lstDevices[0]))
+        camera2 = pylon.InstantCamera(T1.CreateFirstDevice(lstDevices[1]))
+
+        print("using camera1 : ",
+              camera1.GetDeviceInfo().GetModelName())
+        print("using camera2 : ",
+              camera2.GetDeviceInfo().GetModelName())
+    except:
+        print("init fail")
+        exit()
+
+    camera1.Open()
+    camera2.Open()
+
+    camera1.RegisterConfiguration(pylon.SoftwareTriggerConfiguration(), pylon.RegistrationMode_ReplaceAll,
+                                 pylon.Cleanup_Delete)
+    camera2.RegisterConfiguration(pylon.SoftwareTriggerConfiguration(), pylon.RegistrationMode_ReplaceAll,
+                                 pylon.Cleanup_Delete)
+
+    camera1.StartGrabbing(pylon.GrabStrategy_OneByOne)
+    camera2.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+
+    for s in range(5):
+        if camera1.WaitForFrameTriggerReady(200, pylon.TimeoutHandling_ThrowException):
+            pass
+
+
+        camera2.WaitForFrameTriggerReady(200, pylon.TimeoutHandling_ThrowException)
+
 
 def grabCam(cam_q, l):
     start = time.time()
@@ -155,7 +195,7 @@ def test(a):
 
 if __name__ == "__main__":
 
-    test_2can()
+    Test2()
 
     img = np.zeros((100,200), dtype='uint8')
     print(cv2.resize(img, (20,10)).shape)

@@ -129,23 +129,29 @@ def Test2():
         print("init fail")
         exit()
 
-    camera1.Open()
-    camera2.Open()
 
     camera1.RegisterConfiguration(pylon.SoftwareTriggerConfiguration(), pylon.RegistrationMode_ReplaceAll,
                                  pylon.Cleanup_Delete)
     camera2.RegisterConfiguration(pylon.SoftwareTriggerConfiguration(), pylon.RegistrationMode_ReplaceAll,
                                  pylon.Cleanup_Delete)
 
-    camera1.StartGrabbing(pylon.GrabStrategy_OneByOne)
+    camera1.Open()
+    camera2.Open()
+
+    camera1.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
     camera2.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
 
     for s in range(5):
-        if camera1.WaitForFrameTriggerReady(200, pylon.TimeoutHandling_ThrowException):
-            pass
-
-
+        print(s)
+        camera1.WaitForFrameTriggerReady(200, pylon.TimeoutHandling_ThrowException)
         camera2.WaitForFrameTriggerReady(200, pylon.TimeoutHandling_ThrowException)
+        camera1.ExecuteSoftwareTrigger()
+        camera2.ExecuteSoftwareTrigger()
+        re1 = camera1.RetrieveResult(100, pylon.TimeoutHandling_Return)
+        re2 = camera2.RetrieveResult(100, pylon.TimeoutHandling_Return)
+        cv2.imshow("t", re1.GetArray())
+        cv2.imshow("2", re1.GetArray())
+        cv2.waitKey()
 
 
 def grabCam(cam_q, l):

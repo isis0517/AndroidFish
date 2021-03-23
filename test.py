@@ -6,6 +6,7 @@ import cv2
 from time import sleep
 import time
 import sys, os
+from threading import Timer, Event
 
 from pypylon import genicam
 from pypylon import pylon
@@ -108,7 +109,7 @@ def test_2can():
     sys.exit(exitCode)
 
 def Test2():
-
+    fps = 40
     os.environ["PYLON_CAMEMU"] = "2"
     try:
         T1 = pylon.TlFactory.GetInstance()
@@ -130,6 +131,31 @@ def Test2():
         exit()
 
 
+    camera1.RegisterConfiguration(pylon.AcquireContinuousConfiguration(), pylon.RegistrationMode_ReplaceAll,
+                                  pylon.Cleanup_Delete)
+    camera2.RegisterConfiguration(pylon.AcquireContinuousConfiguration(), pylon.RegistrationMode_ReplaceAll,
+                                  pylon.Cleanup_Delete)
+    camera1.Open()
+    camera2.Open()
+
+    re1 = camera1.GrabOne(1000)
+    re2 = camera2.GrabOne(1000)
+    if re1.GrabSucceeded():
+        size1 = re1.GetArray().shape
+    else:
+        print("grab Failed")
+        exit()
+
+    if re2.GrabSucceeded():
+        size2 = re2.GetArray().shape
+
+    else:
+        print("grab Failed")
+        exit()
+
+    camera1.Close()
+    camera2.Close()
+
     camera1.RegisterConfiguration(pylon.SoftwareTriggerConfiguration(), pylon.RegistrationMode_ReplaceAll,
                                  pylon.Cleanup_Delete)
     camera2.RegisterConfiguration(pylon.SoftwareTriggerConfiguration(), pylon.RegistrationMode_ReplaceAll,
@@ -138,21 +164,29 @@ def Test2():
     camera1.Open()
     camera2.Open()
 
+    video1 = cv2.VideoWriter('out1.avi', cv2.VideoWriter_fourcc(*'MJPG'), fps, (size1[1], size1[0]), False)
+    video2 = cv2.VideoWriter('out2.avi', cv2.VideoWriter_fourcc(*'MJPG'), fps, (size2[1], size2[0]), False)
+
     camera1.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
     camera2.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
 
-    for s in range(5):
-        print(s)
+    time_stride = 1./fps
+    start = time.time()
+
+    for s in range(1000):
         camera1.WaitForFrameTriggerReady(200, pylon.TimeoutHandling_ThrowException)
         camera2.WaitForFrameTriggerReady(200, pylon.TimeoutHandling_ThrowException)
         camera1.ExecuteSoftwareTrigger()
         camera2.ExecuteSoftwareTrigger()
+
         re1 = camera1.RetrieveResult(100, pylon.TimeoutHandling_Return)
         re2 = camera2.RetrieveResult(100, pylon.TimeoutHandling_Return)
-        cv2.imshow("t", re1.GetArray())
-        cv2.imshow("2", re1.GetArray())
-        cv2.waitKey()
+        video1.write(re1.GetArray())
+        video2.write(re2.GetArray())
+    print(time.time()-start, time_stride)
 
+def HI():
+    print("HAHA")
 
 def grabCam(cam_q, l):
     start = time.time()
@@ -199,8 +233,15 @@ def getQQ(q, l):
 def test(a):
     a['123'] = 11
 
+def hello():
+    print("hello, world")
+
+
 if __name__ == "__main__":
 
+    Timer(0.1, hello).start()  # after 30 seconds, "hello, world" will be printed
+    sleep(1)
+    print("wakeup")
     Test2()
 
     img = np.zeros((100,200), dtype='uint8')

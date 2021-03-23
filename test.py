@@ -188,6 +188,14 @@ def Test2():
 
     print(time.time()-start, time_stride)
 
+    camera1.Close()
+    camera2.Close()
+
+    camera1.RegisterConfiguration(pylon.AcquireContinuousConfiguration(), pylon.RegistrationMode_ReplaceAll,
+                                  pylon.Cleanup_Delete)
+    camera2.RegisterConfiguration(pylon.AcquireContinuousConfiguration(), pylon.RegistrationMode_ReplaceAll,
+                                  pylon.Cleanup_Delete)
+
 def HI():
     print("HAHA")
 

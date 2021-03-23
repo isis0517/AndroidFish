@@ -175,7 +175,7 @@ def Test2():
     time_stride = 1./fps
     start = time.time()
 
-    for s in range(100):
+    for s in range(10):
         camera1.WaitForFrameTriggerReady(200, pylon.TimeoutHandling_ThrowException)
         camera2.WaitForFrameTriggerReady(200, pylon.TimeoutHandling_ThrowException)
         camera1.ExecuteSoftwareTrigger()
@@ -191,8 +191,15 @@ def Test2():
     camera1.Close()
     camera2.Close()
 
-    camera1.RegisterConfiguration(pylon.ConfigurationEventHandler(), pylon.RegistrationMode_ReplaceAll, pylon.Cleanup_Delete)
-    camera2.RegisterConfiguration(pylon.ConfigurationEventHandler(), pylon.RegistrationMode_ReplaceAll, pylon.Cleanup_Delete)
+    camera1.RegisterConfiguration(pylon.AcquireContinuousConfiguration(), pylon.RegistrationMode_ReplaceAll,
+                                 pylon.Cleanup_Delete)
+    camera2.RegisterConfiguration(pylon.AcquireContinuousConfiguration(), pylon.RegistrationMode_ReplaceAll,
+                                 pylon.Cleanup_Delete)
+
+    camera1.Open()
+    camera2.Open()
+    camera1.Close()
+    camera2.Close()
 
 def HI():
     print("HAHA")

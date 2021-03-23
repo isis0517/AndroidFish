@@ -191,10 +191,8 @@ def Test2():
     camera1.Close()
     camera2.Close()
 
-    camera1.RegisterConfiguration(pylon.AcquireSingleFrameConfiguration(), pylon.RegistrationMode_ReplaceAll,
-                                  pylon.Cleanup_Delete)
-    camera2.RegisterConfiguration(pylon.AcquireSingleFrameConfiguration(), pylon.RegistrationMode_ReplaceAll,
-                                  pylon.Cleanup_Delete)
+    camera1.RegisterConfiguration(pylon.ConfigurationEventHandler(), pylon.RegistrationMode_ReplaceAll, pylon.Cleanup_Delete)
+    camera2.RegisterConfiguration(pylon.ConfigurationEventHandler(), pylon.RegistrationMode_ReplaceAll, pylon.Cleanup_Delete)
 
 def HI():
     print("HAHA")

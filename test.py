@@ -110,6 +110,11 @@ def test_2can():
 
 def Test2():
     fps = 40
+    try:
+        os.mkdir("imgs")
+    except FileExistsError as e:
+        print("already exists")
+
     os.environ["PYLON_CAMEMU"] = "2"
     try:
         T1 = pylon.TlFactory.GetInstance()
@@ -164,16 +169,13 @@ def Test2():
     camera1.Open()
     camera2.Open()
 
-    video1 = cv2.VideoWriter('out1.avi', cv2.VideoWriter_fourcc(*'MJPG'), fps, (size1[1], size1[0]), False)
-    video2 = cv2.VideoWriter('out2.avi', cv2.VideoWriter_fourcc(*'MJPG'), fps, (size2[1], size2[0]), False)
-
     camera1.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
     camera2.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
 
     time_stride = 1./fps
     start = time.time()
 
-    for s in range(1000):
+    for s in range(100):
         camera1.WaitForFrameTriggerReady(200, pylon.TimeoutHandling_ThrowException)
         camera2.WaitForFrameTriggerReady(200, pylon.TimeoutHandling_ThrowException)
         camera1.ExecuteSoftwareTrigger()
@@ -181,8 +183,9 @@ def Test2():
 
         re1 = camera1.RetrieveResult(100, pylon.TimeoutHandling_Return)
         re2 = camera2.RetrieveResult(100, pylon.TimeoutHandling_Return)
-        video1.write(re1.GetArray())
-        video2.write(re2.GetArray())
+        np.save(os.path.join("imgs", f"c1_{s}"), re1.GetArray())
+        np.save(os.path.join("imgs", f"c2_{s}"), re2.GetArray())
+
     print(time.time()-start, time_stride)
 
 def HI():
@@ -239,11 +242,9 @@ def hello():
 
 if __name__ == "__main__":
 
-    Timer(0.1, hello).start()  # after 30 seconds, "hello, world" will be printed
-    sleep(1)
-    print("wakeup")
     Test2()
 
+    exit()
     img = np.zeros((100,200), dtype='uint8')
     print(cv2.resize(img, (20,10)).shape)
 

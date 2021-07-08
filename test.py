@@ -7,6 +7,7 @@ from time import sleep
 import time
 import sys, os
 from threading import Timer, Event
+from tqdm import tqdm
 
 from pypylon import genicam
 from pypylon import pylon
@@ -109,9 +110,11 @@ def test_2can():
     sys.exit(exitCode)
 
 def Test2():
-    fps = 40
+
+    dirname = "/media/hydrolab/L1/0708/male"
+    frame_num = 60000
     try:
-        os.mkdir("imgs")
+        os.mkdir(dirname)
     except FileExistsError as e:
         print("already exists")
 
@@ -148,14 +151,14 @@ def Test2():
     if re1.GrabSucceeded():
         size1 = re1.GetArray().shape
     else:
-        print("grab Failed")
+        print("C1 grab Failed")
         exit()
 
     if re2.GrabSucceeded():
         size2 = re2.GetArray().shape
 
     else:
-        print("grab Failed")
+        print("C2 grab Failed")
         exit()
 
     camera1.Close()
@@ -172,10 +175,9 @@ def Test2():
     camera1.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
     camera2.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
 
-    time_stride = 1./fps
     start = time.time()
 
-    for s in range(10):
+    for s in tqdm(range(frame_num)):
         camera1.WaitForFrameTriggerReady(200, pylon.TimeoutHandling_ThrowException)
         camera2.WaitForFrameTriggerReady(200, pylon.TimeoutHandling_ThrowException)
         camera1.ExecuteSoftwareTrigger()
@@ -183,10 +185,8 @@ def Test2():
 
         re1 = camera1.RetrieveResult(100, pylon.TimeoutHandling_Return)
         re2 = camera2.RetrieveResult(100, pylon.TimeoutHandling_Return)
-        np.save(os.path.join("imgs", f"c1_{s}"), re1.GetArray())
-        np.save(os.path.join("imgs", f"c2_{s}"), re2.GetArray())
-
-    print(time.time()-start, time_stride)
+        np.save(os.path.join(dirname, f"c1_{s}"), re1.GetArray())
+        np.save(os.path.join(dirname, f"c2_{s}"), re2.GetArray())
 
     camera1.Close()
     camera2.Close()

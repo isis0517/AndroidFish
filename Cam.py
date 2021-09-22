@@ -11,7 +11,6 @@ def savebuff(buff, s, shape, dtype=np.float, savepath=""):
     img = np.ndarray(shape, dtype=dtype, buffer=buff)
     np.save(os.path.join(savepath, f"frame_{s}.npy"), img)
 
-
 def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=30, secs=10, c_num=0, savepath="",
             saving=Value(c_bool, False)):
     if not os.path.isdir(os.path.join(savepath, "frames")):

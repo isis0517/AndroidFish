@@ -11,7 +11,7 @@ import queue
 
 # def showImg(cam_q, is_Running, mode="pass", display=0, pgFps=90, imgformat=None,  cM=np.identity(2), bias=np.zeros(
 # (2))):
-def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
+def showImg(cam_q: Queue, is_running: Value, form: list, **kwargs) -> None:
     # parameter
     mode = kwargs.get('mode', "pass")
     display = kwargs.get('display', 1)
@@ -21,7 +21,7 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
     is_calibrate = kwargs.get('calibrate', True if mode == 'inter' else False)
     full = kwargs.get("full", False)
     saving = kwargs.get("saving", Value(c_bool, False))
-    pasue = False
+    pause = False
 
     if form[0] is None:
         for s in range(10):
@@ -35,6 +35,9 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
     tran = list(range(len(shape)))
     tran[0] = 1
     tran[1] = 0
+    pause_img = np.zeros(shape, dtype=dtype)
+    img = np.zeros(shape, dtype=dtype)
+
 
     # init
     pygame.init()
@@ -48,7 +51,7 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
     pgClock = pygame.time.Clock()
     init_size = [1200, 1200]
     flags = pygame.NOFRAME   # | pygame.DOUBLEBUF   # | pygame.SCALED #pygame.HWSURFACE | pygame.FULLSCREEN pygame.RESIZABLE ||
-    # pygame.HWSURFACE | pygame.DOUBLEBUF
+    #     # pygame.HWSURFACE | pygame.DOUBLEBUF
     if full:
         flags = flags | pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.SHOWN
         init_size = [0, 0]
@@ -95,27 +98,36 @@ def showImg(cam_q:Queue, is_running: Value, form: list, **kwargs) -> None:
             traj_q.put(pos)
 
     while is_running.value:
+        # all keyboard event is detected here
 
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_q:
+                    # Q -> kill the process
                     is_running.value = False
                 if event.key == pygame.K_SPACE:
-                    pasue = not pasue
-                    if pasue:
-                        mode = 'debug'
-                    else:
-                        mode = kwargs.get('mode', "pass")
+                    # space -> hold all process, the screen should be frozen and no more saving
+                    pause = not pause
+                    if pause:
+                        saving.value = False
                 if event.key == pygame.K_s:
                     saving.value = not saving.value
+
+        # full the background
         rects = [screen.fill([200, 180, 200])]
 
+        # get the image from cam
         try:
             buf = cam_q.get(True, 0.01)
         except queue.Empty as e:
             continue
         img = np.ndarray(shape, dtype=dtype, buffer=buf)
         # img = np.transpose(img, tran)
+
+        # The treatment of image to showing
+
+        if pause:
+            img = pause_img
 
         if is_calibrate:
             bg.apply(img)

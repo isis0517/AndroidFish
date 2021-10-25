@@ -6,9 +6,9 @@ import time
 from pypylon import pylon
 from ctypes import c_bool
 import cv2
+import pygame
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-import pygame
 
 def savebuff(buff, s, shape, dtype=np.float, savepath=""):
     img = np.ndarray(shape, dtype=dtype, buffer=buff)

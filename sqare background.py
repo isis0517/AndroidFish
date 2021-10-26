@@ -51,6 +51,15 @@ def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
         # all keyboard event is detected here
 
         for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                is_running.value = False
+                pygame.quit()
+            if event.type == pygame.VIDEORESIZE:
+                old_screen = screen
+                screen = pygame.display.set_mode((event.w, event.h),
+                                                  flags)
+                screen.blit(old_screen, (0, 0))
+                del old_screen
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_q:
                     # Q -> kill the process

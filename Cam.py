@@ -6,6 +6,62 @@ from ctypes import c_bool
 import cv2
 import os
 
+def camInit(c_num):
+    try:
+        T1 = pylon.TlFactory.GetInstance()
+        lstDevices = T1.EnumerateDevices()
+        if len(lstDevices) == 0:
+            print("no camera is detected")
+        if len(lstDevices) <= c_num:
+            print(f"ther is no number {c_num} camera")
+        camera = pylon.InstantCamera(T1.CreateFirstDevice(lstDevices[c_num]))
+
+        print("using camera : ",
+              camera.GetDeviceInfo().GetModelName())
+    except:
+        print("init fail")
+        raise Exception("camera init failed")
+    return camera
+
+def camConfig(camera, **kwargs):
+    FrameRate = kwargs.setdefault('FrameRate', 30)
+    camera.Open()
+    camera.AcquisitionFrameRateEnable.SetValue(True)
+    camera.AcquisitionFrameRate.SetValue(FrameRate)
+    camera.BinningVertical.SetValue(1)
+    camera.BinningHorizontal.SetValue(1)
+
+    PixelFormat = camera.PixelFormat.GetValue()
+
+    print("resolution : ", f"{camera.Width.GetValue()}X{camera.Height.GetValue()}")
+    print("Format : ", PixelFormat)
+
+    camera.BinningVerticalMode.SetValue("Average")
+    camera.BinningHorizontalMode.SetValue("Average")
+
+    if camera.Width.GetValue() / 1000 > 1 or camera.Height.GetValue() / 1000 > 1:
+        rat = max(camera.Height.GetValue() / 1000, camera.Width.GetValue() / 1000)
+        print("binning rate = ", rat)
+        camera.BinningVertical.SetValue(int(rat))
+        camera.BinningHorizontal.SetValue(int(rat))
+
+    grabResult = camera.GrabOne(1000)
+    if grabResult.GrabSucceeded():
+        pt = grabResult.GetPixelType()
+        if pylon.IsPacked(pt):
+            _, new_pt = grabResult._Unpack10or12BitPacked()
+            shape, dtype, pixelformat = grabResult.GetImageFormat(new_pt)
+        else:
+            shape, dtype, pixelformat = grabResult.GetImageFormat(pt)
+            _ = grabResult.GetImageBuffer()
+
+    else:
+        print("grab Failed")
+        raise Exception('grab failed')
+
+    camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+
+    return shape, dtype
 
 def savebuff(buff, s, shape, dtype=np.float, savepath=""):
     img = np.ndarray(shape, dtype=dtype, buffer=buff)

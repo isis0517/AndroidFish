@@ -6,13 +6,13 @@ from pypylon import pylon
 from ctypes import c_bool
 import cv2
 import os
+import json
 
-def showImg(cam_q: Queue, is_running: Value, form: list, **kwargs) -> None:
+def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
     # parameter
     vpath = kwargs.get('vpath', "F_F_03.avi")
     display = kwargs.get('display', 1)
     full = kwargs.get("full", False)
-    saving = kwargs.get("saving", Value(c_bool, False))
     pause = False
 
     # init
@@ -36,12 +36,15 @@ def showImg(cam_q: Queue, is_running: Value, form: list, **kwargs) -> None:
     #video
     video = cv2.VideoCapture(vpath)
     _, img = video.read()
+    video.set(cv2.CAP_PROP_POS_AVI_RATIO, 0)
     shape, dtype = img.shape, img.dtype
     shape = (shape[1], shape[0])
     ts_radius = min(shape) * 0.05
     pgFps = video.get(cv2.CAP_PROP_FPS)
-    video.set(cv2.CAP_PROP_POS_AVI_RATIO, 0)
+
+    # loop init
     num = 0
+    temp = False
 
     while is_running.value:
         # all keyboard event is detected here
@@ -72,6 +75,9 @@ def showImg(cam_q: Queue, is_running: Value, form: list, **kwargs) -> None:
         if not pause:
             rects = [screen.fill([200, 180, 200])]
             retval, img = video.read()
+            if retval is False:
+                is_running.value = False
+                break
             frame = pygame.image.frombuffer(img.tobytes(), shape[0:2], 'RGB')
             frame = pygame.transform.scale(frame, tuple(sc_shape))
             rects.append(screen.blit(frame, (0, 0)))
@@ -90,12 +96,10 @@ def savebuff(buff, s, shape, dtype=np.float, savepath=""):
     img = np.ndarray(shape, dtype=dtype, buffer=buff)
     np.save(os.path.join(savepath, f"frame_{s}.npy"), img)
 
-def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=30, secs=10, c_num=0, savepath="",
-            saving=Value(c_bool, False)):
+def grabCam(cam_q: Queue, is_running, saving, camera, FrameRate=30, secs=10, c_num=0, savepath=""):
     if not os.path.isdir(os.path.join(savepath, "frames")):
         os.mkdir(os.path.join(savepath, "frames"))
         savepath = os.path.join(savepath, "frames")
-    print(f"The camera is action in {mode} mode")
     """
     args:
         cam_q : the Pipe comunnecate with cam2img
@@ -112,109 +116,95 @@ def grabCam(cam_q: Queue, is_running, form, mode="camera", FrameRate=30, secs=10
 
     shape, dtype = (0, 0), 'uint8'
 
+    # conecting to the first available camera
 
-    if mode == "camera":
+    camera.Open()
+    camera.AcquisitionFrameRateEnable.SetValue(True)
+    camera.AcquisitionFrameRate.SetValue(FrameRate)
+    camera.BinningVertical.SetValue(1)
+    camera.BinningHorizontal.SetValue(1)
 
-        # conecting to the first available camera
-        try:
-            T1 = pylon.TlFactory.GetInstance()
-            lstDevices = T1.EnumerateDevices()
-            if len(lstDevices) == 0:
-                print("no camera is detected")
-            if len(lstDevices) <= c_num:
-                print(f"ther is no number {c_num} camera")
-            camera = pylon.InstantCamera(T1.CreateFirstDevice(lstDevices[c_num]))
+    PixelFormat = camera.PixelFormat.GetValue()
 
-            print("using camera : ",
-                  camera.GetDeviceInfo().GetModelName())
-        except:
-            print("init fail")
-            exit()
+    print("resolution : ", f"{camera.Width.GetValue()}X{camera.Height.GetValue()}")
+    print("Format : ", PixelFormat)
 
-        camera.Open()
-        camera.AcquisitionFrameRateEnable.SetValue(True)
-        camera.AcquisitionFrameRate.SetValue(FrameRate)
+    grabResult = camera.GrabOne(1000)
+    if grabResult.GrabSucceeded():
+        pt = grabResult.GetPixelType()
+        if pylon.IsPacked(pt):
+            _, new_pt = grabResult._Unpack10or12BitPacked()
+            shape, dtype, pixelformat = grabResult.GetImageFormat(new_pt)
+        else:
+            shape, dtype, pixelformat = grabResult.GetImageFormat(pt)
+            _ = grabResult.GetImageBuffer()
+
+    else:
+        print("grab Failed")
+        exit()
+
+    print(f"starting recording {secs} secs with {FrameRate}fps at path:", savepath)
+
+    camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+    s = 0
+    with Pool(2) as pool:
+
+        while camera.IsGrabbing() and is_running.value:
+            grabResult = camera.RetrieveResult(6000, pylon.TimeoutHandling_ThrowException)
+            cam_q.put(s)
+            if grabResult.GrabSucceeded():
+                buff = grabResult.GetBuffer()
+                if saving.value:
+                    pool.apply_async(savebuff, args=(buff, s, shape,), kwds={"dtype": dtype, "savepath": savepath})
+                    s += 1
+                else:
+                    s = 0
+
+            grabResult.Release()
+        # Releasing the resource and reset
+        is_running.value = False
+        camera.StopGrabbing()
         camera.BinningVertical.SetValue(1)
         camera.BinningHorizontal.SetValue(1)
+        camera.Close()
+        cam_q.close()
 
-        PixelFormat = camera.PixelFormat.GetValue()
+    print("stop")
+    return
 
-        print("resolution : ", f"{camera.Width.GetValue()}X{camera.Height.GetValue()}")
-        print("Format : ", PixelFormat)
+def camInit(c_num=0):
+    try:
+        T1 = pylon.TlFactory.GetInstance()
+        lstDevices = T1.EnumerateDevices()
+        if len(lstDevices) == 0:
+            print("no camera is detected")
+        if len(lstDevices) <= c_num:
+            print(f"ther is no number {c_num} camera")
+        camera = pylon.InstantCamera(T1.CreateFirstDevice(lstDevices[c_num]))
 
-#        camera.BinningVerticalMode.SetValue("Average")
-#        camera.BinningHorizontalMode.SetValue("Average")
-
-        # if camera.Width.GetValue() / 1000 > 1 or camera.Height.GetValue() / 1000 > 1:
-        #     rat = max(camera.Height.GetValue() / 1000, camera.Width.GetValue() / 1000)
-        #     print("binning rate = ", rat)
-        #     camera.BinningVertical.SetValue(int(rat))
-        #     camera.BinningHorizontal.SetValue(int(rat))
-
-        grabResult = camera.GrabOne(1000)
-        if grabResult.GrabSucceeded():
-            pt = grabResult.GetPixelType()
-            if pylon.IsPacked(pt):
-                _, new_pt = grabResult._Unpack10or12BitPacked()
-                shape, dtype, pixelformat = grabResult.GetImageFormat(new_pt)
-            else:
-                shape, dtype, pixelformat = grabResult.GetImageFormat(pt)
-                _ = grabResult.GetImageBuffer()
-
-        else:
-            print("grab Failed")
-            exit()
-
-        counter = FrameRate * secs
-
-        print(f"starting recording {secs} secs with {FrameRate}fps at path:", savepath)
-
-        camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
-        start = time.time()
-        s = 0
-        with Pool(2) as pool:
-
-            while camera.IsGrabbing() and is_running.value:
-                grabResult = camera.RetrieveResult(6000, pylon.TimeoutHandling_ThrowException)
-                cam_q.put(s)
-                counter = counter - 1
-                if grabResult.GrabSucceeded():
-                    buff = grabResult.GetBuffer()
-                    if saving.value:
-                        pool.apply_async(savebuff, args=(buff, s, shape,), kwds={"dtype": dtype, "savepath": savepath})
-                        s += 1
-                    else:
-                        s = 0
-
-                grabResult.Release()
-
-                if counter == 0:
-                    print(f"stop recording {s} frames in time :", time.time() - start)
-                    is_running.value = False
-                    break
-            # Releasing the resource and reset
-            camera.StopGrabbing()
-            camera.BinningVertical.SetValue(1)
-            camera.BinningHorizontal.SetValue(1)
-            camera.Close()
-            cam_q.close()
-
-        print("stop")
-        return
+        print("using camera : ",
+              camera.GetDeviceInfo().GetModelName())
+    except:
+        print("init fail")
+        raise Exception("camera init failed")
+    return camera
 
 
 if __name__ == "__main__":
     #os.environ["PYLON_CAMEMU"] = "2"
+    with open('pyconfig.json') as f:
+        para = json.loads(f.readlines()[0])
+
     cam_q = Queue()  # the Queue for camera img
     is_Running = Value(c_bool, True)
-    saving = Value(c_bool, False)
+    is_Saving = Value(c_bool, False)
 
-    man = Manager()
-    form = man.list([None, None])
-    camera = Process(args=(cam_q, is_Running, form, ), target=grabCam,
-                     kwargs={'mode': "camera", "c_num": 0, "secs": 600, "saving": saving})
-    windows = Process(target=showImg, args=(cam_q, is_Running, form,),
-                      kwargs={'mode': "pass", 'calibrate': False, "full": False, "saving": saving, "display":  1})
+    cam = camInit(c_num=0)
+
+    camera = Process(args=(cam_q, is_Running, is_Saving, cam), target=grabCam,
+                     kwargs=para)
+    windows = Process(target=showImg, args=(cam_q, is_Running, is_Saving,),
+                      kwargs=para)
 
     windows.start()
     camera.start()

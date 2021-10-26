@@ -8,6 +8,9 @@ import cv2
 import os
 import json
 
+## TODO: slove the resize
+## TODO: write the readme to explain how to use
+
 def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
     # parameter
     vpath = kwargs.get('vpath', "F_F_03.avi")

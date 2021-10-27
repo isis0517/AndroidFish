@@ -104,7 +104,7 @@ def showImg(cam_q: Queue, is_running: Value, is_saving:Value, **kwargs) -> None:
         rects = []
         if pause:
             pass
-        else:
+        elif num>0:
             rects = [screen.fill(bk_color)]
             retval, img = video.read()
             if retval is False:
@@ -170,6 +170,8 @@ def grabCam(cam_q: Queue, is_running, saving, savepath="", **kwargs):
                     s = 0
 
             grabResult.Release()
+        pool.close()
+        pool.join()
         # Releasing the resource and reset
         is_running.value = False
         camera.StopGrabbing()
@@ -178,7 +180,7 @@ def grabCam(cam_q: Queue, is_running, saving, savepath="", **kwargs):
         camera.Close()
         cam_q.close()
 
-    print("stop")
+    print("camera stop in", s)
     return
 
 def camInit(c_num=0, **kwargs):

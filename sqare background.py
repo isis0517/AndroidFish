@@ -60,10 +60,9 @@ def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
                 pygame.quit()
             if event.type == pygame.VIDEORESIZE:
                 old_screen = screen
-                screen = pygame.display.set_mode((event.w, event.h),
-                                                  flags)
+                screen = pygame.display.set_mode(event.size, pygame.RESIZABLE)
                 screen.blit(old_screen, (0, 0))
-                sc_shape = np.array(pygame.display.get_window_size())
+                sc_shape = np.array(event.size)
                 sc_rat = min(sc_shape/shape)
                 print(sc_rat)
                 del old_screen

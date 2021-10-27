@@ -59,7 +59,6 @@ def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
                 is_running.value = False
                 pygame.quit()
             if event.type == pygame.VIDEORESIZE:
-
                 old_screen = screen
                 screen = pygame.display.set_mode((event.w, event.h),
                                                   flags)
@@ -166,8 +165,8 @@ def grabCam(cam_q: Queue, is_running, saving, savepath="", **kwargs):
         # Releasing the resource and reset
         is_running.value = False
         camera.StopGrabbing()
-        camera.BinningVertical.SetValue(1)
-        camera.BinningHorizontal.SetValue(1)
+        #camera.BinningVertical.SetValue(1)
+        #camera.BinningHorizontal.SetValue(1)
         camera.Close()
         cam_q.close()
 
@@ -214,8 +213,8 @@ def camConfig(camera, **kwargs):
     camera.Open()
     camera.AcquisitionFrameRateEnable.SetValue(True)
     camera.AcquisitionFrameRate.SetValue(FrameRate)
-    camera.BinningVertical.SetValue(1)
-    camera.BinningHorizontal.SetValue(1)
+    #camera.BinningVertical.SetValue(1)
+    #camera.BinningHorizontal.SetValue(1)
 
     PixelFormat = camera.PixelFormat.GetValue()
 

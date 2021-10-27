@@ -108,6 +108,7 @@ def showImg(cam_q: Queue, is_running: Value, is_saving:Value, **kwargs) -> None:
             rects = [screen.fill(bk_color)]
             retval, img = video.read()
             if retval is False:
+                time.sleep(0.1)
                 is_running.value = False
                 is_saving.value = False
                 print(f"The video is finished, the record end in {num} frames")
@@ -154,7 +155,7 @@ def grabCam(cam_q: Queue, is_running, saving, savepath="", **kwargs):
     # conecting to the first available camera
     camera = camInit(**kwargs)
     camera.Open()
-    shape, dtype = camConfig(camera)
+    shape, dtype = camConfig(camera, **kwargs)
     s = 0
     with Pool(2) as pool:
 
@@ -201,6 +202,7 @@ def camInit(c_num=0, **kwargs):
     return camera
 
 def camConfig(camera, **kwargs):
+    print(kwargs)
     FrameRate = kwargs.setdefault('FrameRate', 30)
 
     if camera.GetDeviceInfo().GetModelName() == "Emulation":

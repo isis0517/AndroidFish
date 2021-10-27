@@ -95,7 +95,10 @@ def showImg(cam_q: Queue, is_running: Value, is_saving:Value, **kwargs) -> None:
                     video.set(cv2.CAP_PROP_POS_AVI_RATIO, 0)
                     _, img = video.read()
         try:
-            num = cam_q.get(timeout=0.001)
+            len = cam_q.qsize()
+            for s in range(len+1):
+                n = cam_q.get(timeout=0.001)
+                num = n
         except:
             pass
         rects = []

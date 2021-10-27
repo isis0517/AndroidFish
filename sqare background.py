@@ -96,7 +96,6 @@ def showImg(cam_q: Queue, is_running: Value, is_saving:Value, **kwargs) -> None:
                     _, img = video.read()
         try:
             num = cam_q.get(timeout=0.001)
-            print(num)
         except:
             pass
         rects = []

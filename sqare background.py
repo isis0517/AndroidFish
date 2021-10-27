@@ -59,10 +59,14 @@ def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
                 is_running.value = False
                 pygame.quit()
             if event.type == pygame.VIDEORESIZE:
+                time.sleep(0.5)
+                for ev in pygame.event.get():
+                    if ev.type == pygame.VIDEORESIZE:
+                        vsize= ev.size
                 old_screen = screen
-                screen = pygame.display.set_mode(event.size, pygame.RESIZABLE)
+                screen = pygame.display.set_mode(vsize, pygame.RESIZABLE)
                 screen.blit(old_screen, (0, 0))
-                sc_shape = np.array(event.size)
+                sc_shape = np.array(vsize)
                 sc_rat = min(sc_shape/shape)
                 print(sc_rat)
                 del old_screen
@@ -121,7 +125,7 @@ def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
         pgClock.tick(pgFps)
         pygame.display.update(rects)
 
-def savebuff(buff, s, shape, dtype=np.float, savepath=""):
+def savebuff(buff, s, shape, dtype=float, savepath=""):
     img = np.ndarray(shape, dtype=dtype, buffer=buff)
     np.save(os.path.join(savepath, f"frame_{s}.npy"), img)
 

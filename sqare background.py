@@ -17,6 +17,7 @@ def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
     display = kwargs.get('display', 1)
     full = kwargs.get("full", False)
     pause = False
+    bk_color = [0, 0, 0] #RGB
 
     # init
     pygame.init()
@@ -28,7 +29,7 @@ def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
     _, img = video.read()
     video.set(cv2.CAP_PROP_POS_AVI_RATIO, 0)
     shape, dtype = img.shape, img.dtype
-    shape = (shape[1], shape[0])
+    shape = np.array([shape[1], shape[0]])
     ts_radius = min(shape) * 0.05
     pgFps = video.get(cv2.CAP_PROP_FPS)
 
@@ -42,13 +43,13 @@ def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
         flags = flags | pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.SHOWN
         init_size = [0, 0]
     screen = pygame.display.set_mode(init_size, display=display, flags=flags)
-    screen.fill([200, 180, 200])
+    screen.fill(bk_color)
     sc_shape = np.array(pygame.display.get_window_size())
-
+    sc_rat = min(sc_shape/shape)
 
     # loop init
     num = 0
-    temp = False
+    save_state = False
 
     while is_running.value:
         # all keyboard event is detected here
@@ -58,10 +59,14 @@ def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
                 is_running.value = False
                 pygame.quit()
             if event.type == pygame.VIDEORESIZE:
+
                 old_screen = screen
                 screen = pygame.display.set_mode((event.w, event.h),
                                                   flags)
                 screen.blit(old_screen, (0, 0))
+                sc_shape = np.array(pygame.display.get_window_size())
+                sc_rat = min(sc_shape/shape)
+                print(sc_rat)
                 del old_screen
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_q:
@@ -71,33 +76,49 @@ def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
                     # space -> hold all process, the screen should be frozen and no more saving
                     pause = not pause
                     if pause:
-                        temp = saving.value
+                        save_state = saving.value
                         saving.value = False
                     else:
-                        saving.value = temp
+                        saving.value = save_state
+                        save_state=False
                 if event.key == pygame.K_s:
-                    saving.value = not saving.value
-                    video.set(cv2.CAP_PROP_POS_AVI_RATIO, 0)
+                    if pause:
+                        save_state = not save_state
+                        video.set(cv2.CAP_PROP_POS_AVI_RATIO, 0)
+                        _, img = video.read()
+                    else:
+                        saving.value = not saving.value
+                        video.set(cv2.CAP_PROP_POS_AVI_RATIO, 0)
                 if event.key == pygame.K_r:
                     video.set(cv2.CAP_PROP_POS_AVI_RATIO, 0)
+                    _, img = video.read()
         try:
             num = cam_q.get(timeout=0.001)
         except:
             pass
         rects = []
-        if not pause:
-            rects = [screen.fill([200, 180, 200])]
+        if pause:
+            pass
+        else:
+            rects = [screen.fill(bk_color)]
             retval, img = video.read()
             if retval is False:
                 is_running.value = False
                 break
-            frame = pygame.image.frombuffer(img.tobytes(), shape[0:2], 'RGB')
-            frame = pygame.transform.scale(frame, tuple(sc_shape))
-            rects.append(screen.blit(frame, (0, 0)))
+        frame = pygame.image.frombuffer(img.tobytes(), shape[0:2], 'RGB')
+        frame = pygame.transform.scale(frame, tuple((shape*sc_rat).astype(int)))
+        rect = frame.get_rect()
+        rect.center = tuple(sc_shape//2)
+        rects.append(screen.blit(frame, rect))
         if saving.value:
             rects.append(pygame.draw.circle(screen, (255, 0, 0), (ts_radius, ts_radius), ts_radius * 0.4))
             textsurface = myfont.render(str(num), False, (200, 200, 200))
             rects.append(screen.blit(textsurface, (ts_radius*0.7, ts_radius*0.6)))
+        if save_state:
+            rects.append(pygame.draw.circle(screen, (120, 40, 40), (ts_radius, ts_radius), ts_radius * 0.4))
+        if pause:
+            textsurface = myfont.render("pause", False, (0, 200, 200))
+            rects.append(screen.blit(textsurface, (ts_radius * 1.1, ts_radius * 1.1)))
 
         pgClock.tick(pgFps)
         pygame.display.update(rects)
@@ -172,16 +193,34 @@ def camInit(c_num=0, **kwargs):
 
 def camConfig(camera, **kwargs):
     FrameRate = kwargs.setdefault('FrameRate', 30)
+
+    if camera.GetDeviceInfo().GetModelName() == "Emulation":
+        camera.Open()
+        grabResult = camera.GrabOne(1000)
+        if grabResult.GrabSucceeded():
+            pt = grabResult.GetPixelType()
+            if pylon.IsPacked(pt):
+                _, new_pt = grabResult._Unpack10or12BitPacked()
+                shape, dtype, pixelformat = grabResult.GetImageFormat(new_pt)
+            else:
+                shape, dtype, pixelformat = grabResult.GetImageFormat(pt)
+                _ = grabResult.GetImageBuffer()
+        else:
+            raise Exception()
+
+        camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+        return (shape, dtype)
+
     camera.Open()
-    # camera.AcquisitionFrameRateEnable.SetValue(True)
-    # camera.AcquisitionFrameRate.SetValue(FrameRate)
-    # camera.BinningVertical.SetValue(1)
-    # camera.BinningHorizontal.SetValue(1)
-    #
-    # PixelFormat = camera.PixelFormat.GetValue()
-    #
-    # print("resolution : ", f"{camera.Width.GetValue()}X{camera.Height.GetValue()}")
-    # print("Format : ", PixelFormat)
+    camera.AcquisitionFrameRateEnable.SetValue(True)
+    camera.AcquisitionFrameRate.SetValue(FrameRate)
+    camera.BinningVertical.SetValue(1)
+    camera.BinningHorizontal.SetValue(1)
+
+    PixelFormat = camera.PixelFormat.GetValue()
+
+    print("resolution : ", f"{camera.Width.GetValue()}X{camera.Height.GetValue()}")
+    print("Format : ", PixelFormat)
     #
     # camera.BinningVerticalMode.SetValue("Average")
     # camera.BinningHorizontalMode.SetValue("Average")

@@ -59,6 +59,7 @@ def showImg(cam_q: Queue, is_running: Value, is_saving:Value, **kwargs) -> None:
                 is_running.value = False
                 is_saving.value = False
             if event.type == pygame.VIDEORESIZE:
+                vsize = event.size
                 time.sleep(0.5)
                 for ev in pygame.event.get():
                     if ev.type == pygame.VIDEORESIZE:
@@ -68,7 +69,6 @@ def showImg(cam_q: Queue, is_running: Value, is_saving:Value, **kwargs) -> None:
                 screen.blit(old_screen, (0, 0))
                 sc_shape = np.array(vsize)
                 sc_rat = min(sc_shape/shape)
-                print(sc_rat)
                 del old_screen
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_q:

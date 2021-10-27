@@ -201,9 +201,9 @@ def camInit(c_num=0, **kwargs):
         raise Exception("camera init failed")
     return camera
 
+
 def camConfig(camera, **kwargs):
-    print(kwargs)
-    FrameRate = kwargs.setdefault('FrameRate', 30)
+    FrameRate = kwargs.get('FrameRate', 30)
 
     if camera.GetDeviceInfo().GetModelName() == "Emulation":
         camera.Open()
@@ -225,22 +225,11 @@ def camConfig(camera, **kwargs):
     camera.Open()
     camera.AcquisitionFrameRateEnable.SetValue(True)
     camera.AcquisitionFrameRate.SetValue(FrameRate)
-    #camera.BinningVertical.SetValue(1)
-    #camera.BinningHorizontal.SetValue(1)
 
     PixelFormat = camera.PixelFormat.GetValue()
 
     print("resolution : ", f"{camera.Width.GetValue()}X{camera.Height.GetValue()}")
     print("Format : ", PixelFormat)
-    #
-    # camera.BinningVerticalMode.SetValue("Average")
-    # camera.BinningHorizontalMode.SetValue("Average")
-
-    # if camera.Width.GetValue() / 1000 > 1 or camera.Height.GetValue() / 1000 > 1:
-    #     rat = max(camera.Height.GetValue() / 1000, camera.Width.GetValue() / 1000)
-    #     print("binning rate = ", rat)
-    #     camera.BinningVertical.SetValue(int(rat))
-    #     camera.BinningHorizontal.SetValue(int(rat))
 
     grabResult = camera.GrabOne(1000)
     if grabResult.GrabSucceeded():

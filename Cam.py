@@ -25,6 +25,24 @@ def camInit(c_num):
 
 def camConfig(camera, **kwargs):
     FrameRate = kwargs.setdefault('FrameRate', 30)
+
+    if camera.GetDeviceInfo().GetModelName() == "Emulation":
+        camera.Open()
+        grabResult = camera.GrabOne(1000)
+        if grabResult.GrabSucceeded():
+            pt = grabResult.GetPixelType()
+            if pylon.IsPacked(pt):
+                _, new_pt = grabResult._Unpack10or12BitPacked()
+                shape, dtype, pixelformat = grabResult.GetImageFormat(new_pt)
+            else:
+                shape, dtype, pixelformat = grabResult.GetImageFormat(pt)
+                _ = grabResult.GetImageBuffer()
+        else:
+            raise Exception()
+
+        camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+        return (shape, dtype)
+
     camera.Open()
     camera.AcquisitionFrameRateEnable.SetValue(True)
     camera.AcquisitionFrameRate.SetValue(FrameRate)

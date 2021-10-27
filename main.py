@@ -9,8 +9,15 @@ from Cam import grabCam
 from ctypes import c_bool
 from ShImg import showImg
 import time
+import os
+import json
 
 if __name__ == "__main__":
+    os.environ["PYLON_CAMEMU"] = "2"
+
+    with open('pyconfig.json', 'r') as f:
+        para = json.load(f)
+
     cam_q = Queue()  # the Queue for camera img
     is_Running = Value(c_bool, True)
     saving = Value(c_bool, False)
@@ -31,5 +38,6 @@ if __name__ == "__main__":
             windows.terminate()
             camera.terminate()
             camera.join()
-            windows.join() 
+            windows.join()
             break
+  

@@ -112,6 +112,17 @@ def showImg(cam_q: Queue, is_running: Value, form: list, **kwargs) -> None:
                         saving.value = False
                 if event.key == pygame.K_s:
                     saving.value = not saving.value
+                if event.type == pygame.VIDEORESIZE:
+                    vsize = event.size
+                    time.sleep(0.5)
+                    for ev in pygame.event.get():
+                        if ev.type == pygame.VIDEORESIZE:
+                            vsize = ev.size
+                    old_screen = screen
+                    screen = pygame.display.set_mode(vsize, pygame.RESIZABLE)
+                    screen.blit(old_screen, (0, 0))
+                    sc_shape = np.array(vsize)
+                    del old_screen
 
         # full the background
         rects = [screen.fill([200, 180, 200])]

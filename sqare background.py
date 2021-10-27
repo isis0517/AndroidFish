@@ -11,7 +11,7 @@ import json
 ## TODO: slove the resize
 ## TODO: write the readme to explain how to use
 
-def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
+def showImg(cam_q: Queue, is_running: Value, is_saving:Value, **kwargs) -> None:
     # parameter
     vpath = kwargs.get('vpath', "F_F_03.avi")
     display = kwargs.get('display', 1)
@@ -57,7 +57,7 @@ def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 is_running.value = False
-                pygame.quit()
+                is_saving.value = False
             if event.type == pygame.VIDEORESIZE:
                 time.sleep(0.5)
                 for ev in pygame.event.get():
@@ -78,10 +78,10 @@ def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
                     # space -> hold all process, the screen should be frozen and no more saving
                     pause = not pause
                     if pause:
-                        save_state = saving.value
-                        saving.value = False
+                        save_state = is_saving.value
+                        is_saving.value = False
                     else:
-                        saving.value = save_state
+                        is_saving.value = save_state
                         save_state=False
                 if event.key == pygame.K_s:
                     if pause:
@@ -89,7 +89,7 @@ def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
                         video.set(cv2.CAP_PROP_POS_AVI_RATIO, 0)
                         _, img = video.read()
                     else:
-                        saving.value = not saving.value
+                        is_saving.value = not is_saving.value
                         video.set(cv2.CAP_PROP_POS_AVI_RATIO, 0)
                 if event.key == pygame.K_r:
                     video.set(cv2.CAP_PROP_POS_AVI_RATIO, 0)
@@ -106,13 +106,15 @@ def showImg(cam_q: Queue, is_running: Value ,saving:Value, **kwargs) -> None:
             retval, img = video.read()
             if retval is False:
                 is_running.value = False
+                is_saving.value = False
+                print(f"The video is finished, the record end in {num} frames")
                 break
         frame = pygame.image.frombuffer(img.tobytes(), shape[0:2], 'RGB')
         frame = pygame.transform.scale(frame, tuple((shape*sc_rat).astype(int)))
         rect = frame.get_rect()
         rect.center = tuple(sc_shape//2)
         rects.append(screen.blit(frame, rect))
-        if saving.value:
+        if is_saving.value:
             rects.append(pygame.draw.circle(screen, (255, 0, 0), (ts_radius, ts_radius), ts_radius * 0.4))
             textsurface = myfont.render(str(num), False, (200, 200, 200))
             rects.append(screen.blit(textsurface, (ts_radius*0.7, ts_radius*0.6)))

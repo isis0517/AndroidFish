@@ -1,4 +1,3 @@
-from multiprocessing import Process, Value, Queue, Manager, Pool
 import pygame
 import numpy as np
 import time
@@ -119,53 +118,51 @@ if __name__ == "__main__":
     img = np.zeros(shape)
 
     # loop start
-    with Pool() as pool:
-        while is_running:
-            # all keyboard event is detected here
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
+    while is_running:
+        # all keyboard event is detected here
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                is_running = False
+            if event.type == pygame.VIDEORESIZE:
+                vsize = event.size
+                time.sleep(0.5)
+                for ev in pygame.event.get():
+                    if ev.type == pygame.VIDEORESIZE:
+                        vsize = ev.size
+                old_screen = screen
+                screen = pygame.display.set_mode(vsize, pygame.RESIZABLE)
+                screen.blit(old_screen, (0, 0))
+                sc_shape = np.array(vsize)
+                sc_rat = min(sc_shape / shape)
+                del old_screen
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_q:
+                    # Q -> kill the process
                     is_running = False
-                if event.type == pygame.VIDEORESIZE:
-                    vsize = event.size
-                    time.sleep(0.5)
-                    for ev in pygame.event.get():
-                        if ev.type == pygame.VIDEORESIZE:
-                            vsize = ev.size
-                    old_screen = screen
-                    screen = pygame.display.set_mode(vsize, pygame.RESIZABLE)
-                    screen.blit(old_screen, (0, 0))
-                    sc_shape = np.array(vsize)
-                    sc_rat = min(sc_shape / shape)
-                    del old_screen
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_q:
-                        # Q -> kill the process
-                        is_running = False
 
-            grabResult = camera.RetrieveResult(6000, pylon.TimeoutHandling_ThrowException)
+        grabResult = camera.RetrieveResult(6000, pylon.TimeoutHandling_ThrowException)
 
-            if grabResult.GrabSucceeded():
-                image = converter.Convert(grabResult)
-                img = image.GetArray()
-                # filp the img
-            else:
-                raise Exception("camera grab failed")
-            # update the screen
-            rects = [screen.fill(bk_color)]
+        if grabResult.GrabSucceeded():
+            image = converter.Convert(grabResult)
+            img = image.GetArray()
+            img = cv2.blur(img, (5, 5))
             img = np.flip(img, axis=0)
-            frame = pygame.image.frombuffer(img.tobytes(), shape[0:2], 'RGB')
-            frame = pygame.transform.scale(frame, tuple((shape * sc_rat).astype(int)))
-            rect = frame.get_rect()
-            rect.center = tuple(sc_shape // 2)
-            rects.append(screen.blit(frame, rect))
+        else:
+            raise Exception("camera grab failed")
+        # update the screen
+        rects = [screen.fill(bk_color)]
+
+        frame = pygame.image.frombuffer(img.tobytes(), shape[0:2], 'RGB')
+        frame = pygame.transform.scale(frame, tuple((shape * sc_rat).astype(int)))
+        rect = frame.get_rect()
+        rect.center = tuple(sc_shape // 2)
+        rects.append(screen.blit(frame, rect))
 
 
-            pgClock.tick(pgFps)
-            pygame.display.update(rects)
+        pgClock.tick(pgFps)
+        pygame.display.update(rects)
 
-        pygame.quit()
-        camera.Close()
-        camera.RegisterConfiguration(pylon.AcquireContinuousConfiguration(), pylon.RegistrationMode_ReplaceAll,
-                                     pylon.Cleanup_Delete)
-        pool.close()
-    print(f"{num}")
+    pygame.quit()
+    camera.Close()
+    camera.RegisterConfiguration(pylon.AcquireContinuousConfiguration(), pylon.RegistrationMode_ReplaceAll,
+                                 pylon.Cleanup_Delete)

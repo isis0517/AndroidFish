@@ -75,7 +75,7 @@ if __name__ == "__main__":
         kwargs = json.load(f)
 
     # parameter
-    display = kwargs.get('display', 1)
+    display = 0
     full = kwargs.get("full", False)
     bk_color = [0, 0, 0]  # RGB
     pgFps = kwargs.get("fps", 30)
@@ -145,8 +145,8 @@ if __name__ == "__main__":
         if grabResult.GrabSucceeded():
             image = converter.Convert(grabResult)
             img = image.GetArray()
-            img = cv2.blur(img, (5, 5))
-            img = np.flip(img, axis=0)
+            img = cv2.blur(img, (3, 3))
+            #img = np.flip(img, axis=0)
         else:
             raise Exception("camera grab failed")
         # update the screen

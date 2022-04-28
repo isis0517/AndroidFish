@@ -45,6 +45,7 @@ def camConfig(camera, **kwargs):
         return (shape, dtype)
 
     camera.Open()
+
     PixelFormat = camera.PixelFormat.GetValue()
 
     print("resolution : ", f"{camera.Width.GetValue()}X{camera.Height.GetValue()}")
@@ -70,8 +71,10 @@ def camConfig(camera, **kwargs):
 if __name__ == "__main__":
     ## this line enable the camera emulater
     # os.environ["PYLON_CAMEMU"] = "1"
-
-    with open('pyconfig.json', 'r') as f:
+    if not os.path.exists("mmconfig.json"):
+        with open("mmconfig.json", 'w'):
+            pass
+    with open('mmconfig.json', 'r') as f:
         kwargs = json.load(f)
 
     # parameter
@@ -79,6 +82,7 @@ if __name__ == "__main__":
     full = kwargs.get("full", False)
     bk_color = [0, 0, 0]  # RGB
     pgFps = kwargs.get("fps", 30)
+    delay = 0
 
     # pygame init
     pygame.init()
@@ -111,11 +115,11 @@ if __name__ == "__main__":
     sc_rat = min(sc_shape / shape)
 
     # loop init
-    num = 0
+    start = time.time()
     is_running = True
-    is_saving = False
-    pause = False
+    fps_check = False
     img = np.zeros(shape)
+    scenes = [np.ones(np.append(shape, [3]), dtype=np.uint8)]*delay
 
     # loop start
     while is_running:
@@ -124,6 +128,7 @@ if __name__ == "__main__":
             if event.type == pygame.QUIT:
                 is_running = False
             if event.type == pygame.VIDEORESIZE:
+                fps_check=False
                 vsize = event.size
                 time.sleep(0.5)
                 for ev in pygame.event.get():
@@ -135,6 +140,8 @@ if __name__ == "__main__":
                 sc_shape = np.array(vsize)
                 sc_rat = min(sc_shape / shape)
                 del old_screen
+            if event.type == pygame.WINDOWEVENT:
+                fps_check=False
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_q:
                     # Q -> kill the process
@@ -143,26 +150,29 @@ if __name__ == "__main__":
         grabResult = camera.RetrieveResult(6000, pylon.TimeoutHandling_ThrowException)
 
         if grabResult.GrabSucceeded():
-            image = converter.Convert(grabResult)
-            img = image.GetArray()
+            buff = grabResult.GetBuffer()
+            img = cv2.cvtColor(np.ndarray(cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2BGR)
             img = cv2.blur(img, (3, 3))
-            #img = np.flip(img, axis=0)
+            scenes.append(img)
         else:
             raise Exception("camera grab failed")
         # update the screen
         rects = [screen.fill(bk_color)]
-
-        frame = pygame.image.frombuffer(img.tobytes(), shape[0:2], 'RGB')
+        last_img = scenes.pop(0)
+        frame = pygame.image.frombuffer(last_img.tobytes(), shape[0:2], 'RGB')
         frame = pygame.transform.scale(frame, tuple((shape * sc_rat).astype(int)))
         rect = frame.get_rect()
         rect.center = tuple(sc_shape // 2)
         rects.append(screen.blit(frame, rect))
 
-
-        pgClock.tick(pgFps)
         pygame.display.update(rects)
+        pgClock.tick(pgFps)
+
+        if fps_check and pgClock.get_time() > 1100/(pgFps):
+            print("lagging!, stop the video", pgClock.get_fps())
+            break
+
+        fps_check = True
 
     pygame.quit()
     camera.Close()
-    camera.RegisterConfiguration(pylon.AcquireContinuousConfiguration(), pylon.RegistrationMode_ReplaceAll,
-                                 pylon.Cleanup_Delete)

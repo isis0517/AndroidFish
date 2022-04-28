@@ -79,10 +79,11 @@ if __name__ == "__main__":
 
     # parameter
     display = 0
-    full = kwargs.get("full", False)
+    full = False
     bk_color = [0, 0, 0]  # RGB
-    pgFps = kwargs.get("fps", 30)
+    pgFps = 30
     delay = 0
+    crack = 0
 
     # pygame init
     pygame.init()
@@ -140,7 +141,7 @@ if __name__ == "__main__":
                 sc_shape = np.array(vsize)
                 sc_rat = min(sc_shape / shape)
                 del old_screen
-            if event.type == pygame.WINDOWEVENT:
+            if event.type == pygame.VIDEOEXPOSE:
                 fps_check=False
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_q:
@@ -167,9 +168,15 @@ if __name__ == "__main__":
 
         pygame.display.update(rects)
         pgClock.tick(pgFps)
+        crack += 1
 
-        if fps_check and pgClock.get_time() > 1100/(pgFps):
-            print("lagging!, stop the video", pgClock.get_fps())
+        if fps_check and pgClock.get_time() > 1200/(pgFps):
+            print("lagging!, stop the video", pgClock.get_time())
+            crack += 1
+        else:
+            crack=0
+
+        if crack > 5:
             break
 
         fps_check = True

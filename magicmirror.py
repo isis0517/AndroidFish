@@ -70,7 +70,7 @@ def camConfig(camera, **kwargs):
 
 if __name__ == "__main__":
     ## this line enable the camera emulater
-    # os.environ["PYLON_CAMEMU"] = "1"
+    os.environ["PYLON_CAMEMU"] = "1"
     if not os.path.exists("mmconfig.json"):
         with open("mmconfig.json", 'w'):
             pass
@@ -104,7 +104,7 @@ if __name__ == "__main__":
     # pygame config
     pygame.display.set_caption("OpenCV camera stream on Pygame")
     pgClock = pygame.time.Clock()
-    init_size = shape
+    init_size = [1300, 400]
     flags = pygame.RESIZABLE  # | pygame.DOUBLEBUF | pygame.SCALED  pygame.NOFRAME | #  #pygame.HWSURFACE | pygame.FULLSCREEN pygame.RESIZABLE ||
     #     # pygame.HWSURFACE | pygame.DOUBLEBUF
     if full:

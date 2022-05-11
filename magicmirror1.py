@@ -139,7 +139,7 @@ if __name__ == "__main__":
     flags = 0 #pygame.RESIZABLE  # | pygame.DOUBLEBUF | pygame.SCALED  pygame.NOFRAME | #  #pygame.HWSURFACE | pygame.FULLSCREEN pygame.RESIZABLE ||
     #     # pygame.HWSURFACE | pygame.DOUBLEBUF
     if full:
-        flags = flags | pygame.SHOWN | pygame.FULLSCREEN | pygame.DOUBLEBUF | pygame.HWSURFACE
+        flags = flags | pygame.SHOWN | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.NOFRAME #| pygame.FULLSCREEN
         init_size = [0, 0]
     screen = pygame.display.set_mode(init_size, display=display, flags=flags)
     screen.fill(bk_color)
@@ -155,20 +155,17 @@ if __name__ == "__main__":
 
     # rect config
     tank_size = np.array([1300, 400])
-    sc_rat = min(tank_size / shape)
+    tank_shape = tuple((shape*min(tank_size / shape)).astype(np.int))
     tank1_cen = tuple(sc_shape//2)
     tank1_sel = False
-    cover = pygame.rect.Rect((0,0), tuple(tank_size))
+    cover = pygame.rect.Rect((0, 0), tuple(tank_size))
     cover.center = tank1_cen
 
     m_pos = (0,0)
 
     # loop start
-    while 1:
+    while is_running and console.is_alive():
         # all keyboard event is detected here
-
-        if not console.is_alive():
-            break
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -196,6 +193,7 @@ if __name__ == "__main__":
         if grabResult.GrabSucceeded():
             buff = grabResult.GetBuffer()
             img = cv2.cvtColor(np.ndarray(cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2BGR)
+            img = cv2.resize(img, tank_shape, cv2.INTER_NEAREST)
             img = cv2.blur(img, (3, 3))
             scenes.append(img)
         else:
@@ -214,8 +212,8 @@ if __name__ == "__main__":
         # update the screen
         # rects = [screen.fill(bk_color)]
         last_img = scenes.pop(0)
-        frame = pygame.image.frombuffer(last_img.tobytes(), shape[0:2], 'RGB')
-        frame = pygame.transform.scale(frame, tuple((shape * sc_rat).astype(int)))
+        frame = pygame.image.frombuffer(last_img.tobytes(), tank_shape, 'RGB')
+        #frame = pygame.transform.scale(frame, tuple((shape * sc_rat).astype(int)))
         rect = frame.get_rect()
         rect.center = tank1_cen
         cover = screen.blit(frame, rect)
@@ -223,11 +221,11 @@ if __name__ == "__main__":
         pygame.display.update(rects)
 
         pgClock.tick(pgFps)
-        crack += 1
+        crack += 0
 
         if fps_check and pgClock.get_time() > 1200/(pgFps):
-            print("lagging!, interval =", pgClock.get_time())
-            crack += 1
+            pass
+            #print("lagging!, interval =", pgClock.get_time())
         else:
             crack=0
 

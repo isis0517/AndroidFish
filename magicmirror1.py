@@ -5,7 +5,32 @@ from pypylon import pylon
 import cv2
 import os
 import json
+import tkinter as tk
+from multiprocessing import Process, Queue
+from pyfirmata2 import Arduino
 
+
+def show_console():
+    # 讀入影片,由於參數傳遞的關係，數據必須先預處理成list才能避免傳遞時使用傳址的方式
+    # 第1步，例項化object，建立視窗window
+    window = tk.Tk()
+
+    # 第2步，給視窗的視覺化起名字
+    window.title('console panel')
+
+    # 第3步，設定視窗的大小(長 * 寬)
+    window.geometry('500x500')  # 這裡的乘是小x
+
+    # 第4步，在圖形介面上設定標籤
+    var = tk.StringVar()    # 將label標籤的內容設定為字元型別，用var來接收hit_me函式的傳出內容用以顯示在標籤上
+    Lable1 = tk.Label(window, textvariable=var, bg='green', fg='white', font=('Arial', 12), width=30, height=2)
+    # 說明： bg為背景，fg為字型顏色，font為字型，width為長，height為高，這裡的長和高是字元的長和高，比如height=2,就是標籤有2個字元這麼高
+    Lable1.pack()
+
+    # 第6步，主視窗迴圈顯示
+    window.mainloop()
+    # 注意，loop因為是迴圈的意思，window.mainloop就會讓window不斷的重新整理，如果沒有mainloop,就是一個靜態的window,傳入進去的值就不會有迴圈，mainloop就相當於一個很大的while迴圈，有個while，每點選一次就會更新一次，所以我們必須要有迴圈
+    # 所有的視窗檔案都必須有類似的mainloop函式，mainloop是視窗檔案的關鍵的關鍵。
 
 def camInit(c_num=0, **kwargs):
     try:
@@ -80,11 +105,18 @@ if __name__ == "__main__":
     # parameter
     display = 1
     full = True
-    bk_color = [0, 0, 0]  # RGB
+    bk_color = [200, 200, 200]  # RGB
     pgFps = 30
     delay = 0
     crack = 0
-    tank_size = [1300, 400]
+
+    # loading arduino
+    PORT = Arduino.AUTODETECT
+    if not isinstance(PORT, str):
+        print("no Arduino is detected")
+    else:
+        print(f"Arduino is detected at PORT {PORT}")
+        board = Arduino(PORT)
 
     # pygame init
     pygame.init()
@@ -96,25 +128,23 @@ if __name__ == "__main__":
     cam_shape, cam_type = camConfig(camera, **kwargs)
     shape = np.array((cam_shape[1], cam_shape[0]))
 
-
-    # converter
-    converter = pylon.ImageFormatConverter()
-    converter.OutputPixelFormat = pylon.PixelType_RGB8packed
-    converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+    # console setting
+    console = Process(target=show_console)
+    console.start()
 
     # pygame config
     pygame.display.set_caption("OpenCV camera stream on Pygame")
     pgClock = pygame.time.Clock()
     init_size = [1300, 400]
-    flags = pygame.RESIZABLE  # | pygame.DOUBLEBUF | pygame.SCALED  pygame.NOFRAME | #  #pygame.HWSURFACE | pygame.FULLSCREEN pygame.RESIZABLE ||
+    flags = 0 #pygame.RESIZABLE  # | pygame.DOUBLEBUF | pygame.SCALED  pygame.NOFRAME | #  #pygame.HWSURFACE | pygame.FULLSCREEN pygame.RESIZABLE ||
     #     # pygame.HWSURFACE | pygame.DOUBLEBUF
     if full:
-        flags = flags | pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.SHOWN
+        flags = flags | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.SHOWN | pygame.NOFRAME # | pygame.FULLSCREEN
         init_size = [0, 0]
     screen = pygame.display.set_mode(init_size, display=display, flags=flags)
     screen.fill(bk_color)
     sc_shape = np.array(pygame.display.get_window_size())
-    sc_rat = min(sc_shape / shape)
+
 
     # loop init
     start = time.time()
@@ -123,32 +153,42 @@ if __name__ == "__main__":
     img = np.zeros(shape)
     scenes = [np.ones(np.append(shape, [3]), dtype=np.uint8)]*delay
 
+    # rect config
+    tank_size = np.array([1300, 400])
+    sc_rat = min(tank_size / shape)
+    tank1_cen = tuple(sc_shape//2)
+    tank1_sel = False
+    cover = pygame.rect.Rect((0,0), tuple(tank_size))
+    cover.center = tank1_cen
+
+    dis = (0,0)
+
     # loop start
-    while is_running:
+    while is_running and console.is_alive():
         # all keyboard event is detected here
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 is_running = False
-            # if event.type == pygame.VIDEORESIZE:
-            #     fps_check=False
-            #     vsize = event.size
-            #     time.sleep(0.5)
-            #     for ev in pygame.event.get():
-            #         if ev.type == pygame.VIDEORESIZE:
-            #             vsize = ev.size
-            #     old_screen = screen
-            #     screen = pygame.display.set_mode(vsize, pygame.RESIZABLE)
-            #     screen.blit(old_screen, (0, 0))
-            #     sc_shape = np.array(vsize)
-            #     sc_rat = min(sc_shape / shape)
-            #     del old_screen
+
+            if event.type == pygame.MOUSEMOTION:
+                dis = pygame.mouse.get_rel()
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if cover.collidepoint(pygame.mouse.get_pos()):
+                    tank1_sel = True
+
+            if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                tank1_sel = False
+
             if event.type == pygame.VIDEOEXPOSE:
                 fps_check=False
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_q:
                     # Q -> kill the process
                     is_running = False
 
+        # grab image
         grabResult = camera.RetrieveResult(6000, pylon.TimeoutHandling_ThrowException)
 
         if grabResult.GrabSucceeded():
@@ -158,14 +198,21 @@ if __name__ == "__main__":
             scenes.append(img)
         else:
             raise Exception("camera grab failed")
+
+        # update the pos
+        if tank1_sel:
+            tank1_cen = (tank1_cen[0]+dis[0], tank1_cen[1]+dis[1])
+            dis = [0, 0]
+
         # update the screen
         rects = [screen.fill(bk_color)]
         last_img = scenes.pop(0)
         frame = pygame.image.frombuffer(last_img.tobytes(), shape[0:2], 'RGB')
         frame = pygame.transform.scale(frame, tuple((shape * sc_rat).astype(int)))
         rect = frame.get_rect()
-        rect.center = tuple(sc_shape // 2)
-        rects.append(screen.blit(frame, rect))
+        rect.center = tank1_cen
+        cover = screen.blit(frame, rect)
+        rects.append(cover)
 
         pygame.display.update(rects)
 
@@ -185,3 +232,4 @@ if __name__ == "__main__":
 
     pygame.quit()
     camera.Close()
+    console.terminate()

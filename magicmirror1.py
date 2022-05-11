@@ -111,12 +111,12 @@ if __name__ == "__main__":
     crack = 0
 
     # loading arduino
-    PORT = Arduino.AUTODETECT
-    if not isinstance(PORT, str):
-        print("no Arduino is detected")
-    else:
-        print(f"Arduino is detected at PORT {PORT}")
-        board = Arduino(PORT)
+    # PORT = Arduino.AUTODETECT
+    # if not isinstance(PORT, str):
+    #     print("no Arduino is detected")
+    # else:
+    #     print(f"Arduino is detected at PORT {PORT}")
+    #     board = Arduino(PORT)
 
     # pygame init
     pygame.init()
@@ -139,15 +139,15 @@ if __name__ == "__main__":
     flags = 0 #pygame.RESIZABLE  # | pygame.DOUBLEBUF | pygame.SCALED  pygame.NOFRAME | #  #pygame.HWSURFACE | pygame.FULLSCREEN pygame.RESIZABLE ||
     #     # pygame.HWSURFACE | pygame.DOUBLEBUF
     if full:
-        flags = flags | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.SHOWN | pygame.NOFRAME # | pygame.FULLSCREEN
+        flags = flags | pygame.SHOWN | pygame.FULLSCREEN | pygame.DOUBLEBUF | pygame.HWSURFACE
         init_size = [0, 0]
     screen = pygame.display.set_mode(init_size, display=display, flags=flags)
     screen.fill(bk_color)
+    pygame.display.update()
     sc_shape = np.array(pygame.display.get_window_size())
 
 
     # loop init
-    start = time.time()
     is_running = True
     fps_check = False
     img = np.zeros(shape)
@@ -161,21 +161,23 @@ if __name__ == "__main__":
     cover = pygame.rect.Rect((0,0), tuple(tank_size))
     cover.center = tank1_cen
 
-    dis = (0,0)
+    m_pos = (0,0)
 
     # loop start
-    while is_running and console.is_alive():
+    while 1:
         # all keyboard event is detected here
+
+        if not console.is_alive():
+            break
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 is_running = False
 
-            if event.type == pygame.MOUSEMOTION:
-                dis = pygame.mouse.get_rel()
-
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if cover.collidepoint(pygame.mouse.get_pos()):
                     tank1_sel = True
+                    m_pos = pygame.mouse.get_pos()
 
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 tank1_sel = False
@@ -189,7 +191,7 @@ if __name__ == "__main__":
                     is_running = False
 
         # grab image
-        grabResult = camera.RetrieveResult(6000, pylon.TimeoutHandling_ThrowException)
+        grabResult = camera.RetrieveResult(1000, pylon.TimeoutHandling_ThrowException)
 
         if grabResult.GrabSucceeded():
             buff = grabResult.GetBuffer()
@@ -199,13 +201,18 @@ if __name__ == "__main__":
         else:
             raise Exception("camera grab failed")
 
+        # the rects will be updated, it is the key point to take fps stable
+        rects = []
+
         # update the pos
         if tank1_sel:
-            tank1_cen = (tank1_cen[0]+dis[0], tank1_cen[1]+dis[1])
-            dis = [0, 0]
+            rects.append(screen.fill(bk_color))
+            c_pos = pygame.mouse.get_pos()
+            tank1_cen = (tank1_cen[0]+c_pos[0]-m_pos[0], tank1_cen[1]+c_pos[1]-m_pos[1])
+            m_pos = c_pos
 
         # update the screen
-        rects = [screen.fill(bk_color)]
+        # rects = [screen.fill(bk_color)]
         last_img = scenes.pop(0)
         frame = pygame.image.frombuffer(last_img.tobytes(), shape[0:2], 'RGB')
         frame = pygame.transform.scale(frame, tuple((shape * sc_rat).astype(int)))
@@ -213,14 +220,13 @@ if __name__ == "__main__":
         rect.center = tank1_cen
         cover = screen.blit(frame, rect)
         rects.append(cover)
-
         pygame.display.update(rects)
 
         pgClock.tick(pgFps)
         crack += 1
 
         if fps_check and pgClock.get_time() > 1200/(pgFps):
-            print("lagging!, stop the video", pgClock.get_time())
+            print("lagging!, interval =", pgClock.get_time())
             crack += 1
         else:
             crack=0

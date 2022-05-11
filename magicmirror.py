@@ -83,6 +83,7 @@ if __name__ == "__main__":
     pgFps = 30
     delay = 0
     crack = 0
+    c_num = kwargs.get("c_num", 0)
 
     # pygame init
     pygame.init()
@@ -101,7 +102,7 @@ if __name__ == "__main__":
     converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
 
     # pygame config
-    pygame.display.set_caption("OpenCV camera stream on Pygame")
+    pygame.display.set_caption(f"Camera NO. {c_num}")
     pgClock = pygame.time.Clock()
     init_size = [1300, 400]
     flags = pygame.RESIZABLE  # | pygame.DOUBLEBUF | pygame.SCALED  pygame.NOFRAME | #  #pygame.HWSURFACE | pygame.FULLSCREEN pygame.RESIZABLE ||

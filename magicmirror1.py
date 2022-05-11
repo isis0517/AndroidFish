@@ -6,6 +6,7 @@ import cv2
 import os
 import json
 
+
 def camInit(c_num=0, **kwargs):
     try:
         T1 = pylon.TlFactory.GetInstance()
@@ -69,7 +70,7 @@ def camConfig(camera, **kwargs):
 
 if __name__ == "__main__":
     ## this line enable the camera emulater
-    # os.environ["PYLON_CAMEMU"] = "1"
+    os.environ["PYLON_CAMEMU"] = "1"
     if not os.path.exists("mmconfig.json"):
         with open("mmconfig.json", 'w'):
             pass
@@ -77,12 +78,13 @@ if __name__ == "__main__":
         kwargs = json.load(f)
 
     # parameter
-    display = 0
-    full = False
+    display = 1
+    full = True
     bk_color = [0, 0, 0]  # RGB
     pgFps = 30
     delay = 0
     crack = 0
+    tank_size = [1300, 400]
 
     # pygame init
     pygame.init()
@@ -127,19 +129,19 @@ if __name__ == "__main__":
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 is_running = False
-            if event.type == pygame.VIDEORESIZE:
-                fps_check=False
-                vsize = event.size
-                time.sleep(0.5)
-                for ev in pygame.event.get():
-                    if ev.type == pygame.VIDEORESIZE:
-                        vsize = ev.size
-                old_screen = screen
-                screen = pygame.display.set_mode(vsize, pygame.RESIZABLE)
-                screen.blit(old_screen, (0, 0))
-                sc_shape = np.array(vsize)
-                sc_rat = min(sc_shape / shape)
-                del old_screen
+            # if event.type == pygame.VIDEORESIZE:
+            #     fps_check=False
+            #     vsize = event.size
+            #     time.sleep(0.5)
+            #     for ev in pygame.event.get():
+            #         if ev.type == pygame.VIDEORESIZE:
+            #             vsize = ev.size
+            #     old_screen = screen
+            #     screen = pygame.display.set_mode(vsize, pygame.RESIZABLE)
+            #     screen.blit(old_screen, (0, 0))
+            #     sc_shape = np.array(vsize)
+            #     sc_rat = min(sc_shape / shape)
+            #     del old_screen
             if event.type == pygame.VIDEOEXPOSE:
                 fps_check=False
             if event.type == pygame.KEYDOWN:
@@ -166,6 +168,7 @@ if __name__ == "__main__":
         rects.append(screen.blit(frame, rect))
 
         pygame.display.update(rects)
+
         pgClock.tick(pgFps)
         crack += 1
 

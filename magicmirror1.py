@@ -6,8 +6,138 @@ import cv2
 import os
 import json
 import tkinter as tk
+from tkinter import ttk
 from multiprocessing import Process, Queue
 from pyfirmata2 import Arduino
+
+
+class InitWindows(tk.Frame):
+    def __init__(self, cameras):
+        self.root = tk.Tk()
+        # self.root.geometry('500x300')
+        tk.Frame.__init__(self, self.root)
+        combo_values = ["Record", "Display", "No Use"]
+        row_num = 0
+        self.cameras = cameras
+        self.cam_usage = list()
+        self.cam_prompts = list()
+        for camera in self.cameras:
+            self.cam_prompts.append(tk.Label(self, text=camera.GetDeviceInfo().GetModelName(), anchor='w'))
+            self.cam_usage.append(ttk.Combobox(self, values=combo_values, width=7))
+            self.cam_prompts[-1].grid(column=0, row=row_num, sticky="W")
+            self.cam_usage[-1].grid(column=1, row=row_num, sticky="W")
+            self.cam_usage[-1].current(2)
+            row_num += 1
+
+        self.path_prompt = tk.Label(self, text="Working dictionary : ")
+        self.path_prompt.grid(column=0, row=row_num, sticky="W")
+        self.path_entry = tk.Entry(self, text=0, width=40)
+        self.path_entry.insert(tk.END, os.getcwd())
+        self.path_entry.grid(column=1, row=row_num, sticky="W")
+        row_num += 1
+
+        self.display_prompt = tk.Label(self, text="pygame display numbers:")
+        self.display_prompt.grid(column=0, row=row_num, sticky="W")
+        self.display_entry = tk.Entry(self, width=4)
+        self.display_entry.insert(tk.END, 1)
+        self.display_entry.grid(column=1, row=row_num, sticky="W")
+        row_num += 1
+
+        self.check_btn = tk.Button(self, text="Check", command=self.check, width=10, heigh=2)
+        self.check_btn.grid(column=0, row=row_num, columnspan=2)
+        self.pack(fill="both", expand=True)
+
+        self.root.mainloop()
+
+    def check(self):
+        self.rec_cam = None
+        self.display_cams = []
+        for c_num, usage in enumerate(self.cam_usage):
+            if usage.current() == 0:
+                self.rec_cam = self.cameras[c_num]
+            elif usage.current() == 1:
+                self.display_cams.append(self.cameras[c_num])
+
+        self.display_num = int(self.display_entry.get())
+        self.workpath = self.path_entry.get()
+        self.root.destroy()
+
+
+class PygCamera:
+    def __init__(self, camera: pylon.InstantCamera, sc_shape, tank_size=np.array([1300, 400])):
+        self.cam_shape, self.dtype = self.camConfig(camera)
+        self.shape = np.array([self.cam_shape[1], self.cam_shape[0]])
+        self.camera = camera
+        self.tank_shape = tuple((self.shape * min(tank_size / self.shape)).astype(np.int))
+        self.rect = pygame.Rect((0, 0), tuple(self.tank_shape))
+        self.rect.center = tuple(sc_shape // 2)
+        self.setDelayCount(0)
+
+    def setDelayCount(self, count):
+        self.delaycount = count
+        self.scenes = [np.zeros(np.append(self.shape, [3]), dtype=np.uint8)] * count
+
+    def grabCam(self):
+        grabResult = self.camera.RetrieveResult(1000, pylon.TimeoutHandling_ThrowException)
+
+        if grabResult.GrabSucceeded():
+            buff = grabResult.GetBuffer()
+            img = cv2.cvtColor(np.ndarray(self.cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2BGR)
+            img = cv2.resize(img, self.tank_shape, cv2.INTER_NEAREST)
+            img = cv2.blur(img, (3, 3))
+            self.scenes.append(img)
+        else:
+            raise Exception("camera grab failed")
+
+    def getFrame(self) -> pygame.Surface:
+        img = self.scenes.pop(0)
+        return pygame.image.frombuffer(img.tobytes(), self.tank_shape, 'RGB')
+
+    def update(self) -> pygame.Surface:
+        self.grabCam()
+        return self.getFrame()
+
+    def setDisplace(self, dis):
+        center = self.rect.center
+        self.rect.center = (center[0]+dis[0], center[1]+dis[1])
+
+    @staticmethod
+    def camConfig(camera: pylon.InstantCamera):
+        if camera.GetDeviceInfo().GetModelName() == "Emulation":
+            camera.Open()
+            grabResult = camera.GrabOne(6000)
+            if grabResult.GrabSucceeded():
+                pt = grabResult.GetPixelType()
+                if pylon.IsPacked(pt):
+                    _, new_pt = grabResult._Unpack10or12BitPacked()
+                    shape, dtype, pixelformat = grabResult.GetImageFormat(new_pt)
+                else:
+                    shape, dtype, pixelformat = grabResult.GetImageFormat(pt)
+                    _ = grabResult.GetImageBuffer()
+            else:
+                raise Exception()
+
+            camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+            return (shape, dtype)
+
+        camera.Open()
+
+        grabResult = camera.GrabOne(1000)
+        if grabResult.GrabSucceeded():
+            pt = grabResult.GetPixelType()
+            if pylon.IsPacked(pt):
+                _, new_pt = grabResult._Unpack10or12BitPacked()
+                shape, dtype, pixelformat = grabResult.GetImageFormat(new_pt)
+            else:
+                shape, dtype, pixelformat = grabResult.GetImageFormat(pt)
+                _ = grabResult.GetImageBuffer()
+
+        else:
+            print("grab Failed")
+            raise Exception('grab failed')
+        camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+
+        return (shape, dtype)
 
 
 def show_console():
@@ -22,7 +152,7 @@ def show_console():
     window.geometry('500x500')  # 這裡的乘是小x
 
     # 第4步，在圖形介面上設定標籤
-    var = tk.StringVar()    # 將label標籤的內容設定為字元型別，用var來接收hit_me函式的傳出內容用以顯示在標籤上
+    var = tk.StringVar()  # 將label標籤的內容設定為字元型別，用var來接收hit_me函式的傳出內容用以顯示在標籤上
     Lable1 = tk.Label(window, textvariable=var, bg='green', fg='white', font=('Arial', 12), width=30, height=2)
     # 說明： bg為背景，fg為字型顏色，font為字型，width為長，height為高，這裡的長和高是字元的長和高，比如height=2,就是標籤有2個字元這麼高
     Lable1.pack()
@@ -32,66 +162,24 @@ def show_console():
     # 注意，loop因為是迴圈的意思，window.mainloop就會讓window不斷的重新整理，如果沒有mainloop,就是一個靜態的window,傳入進去的值就不會有迴圈，mainloop就相當於一個很大的while迴圈，有個while，每點選一次就會更新一次，所以我們必須要有迴圈
     # 所有的視窗檔案都必須有類似的mainloop函式，mainloop是視窗檔案的關鍵的關鍵。
 
-def camInit(c_num=0, **kwargs):
+
+def getCams():
     try:
         T1 = pylon.TlFactory.GetInstance()
         lstDevices = T1.EnumerateDevices()
         if len(lstDevices) == 0:
             print("no camera is detected")
-        if len(lstDevices) <= c_num:
-            print(f"ther is no number {c_num} camera")
-        camera = pylon.InstantCamera(T1.CreateFirstDevice(lstDevices[c_num]))
+        cameras = []
+        for cam_info in lstDevices:
+            cameras.append(pylon.InstantCamera(T1.CreateFirstDevice(cam_info)))
 
-        print("using camera : ",
-              camera.GetDeviceInfo().GetModelName())
+        print("total camera numbers : ",
+              len(lstDevices))
     except:
         print("init fail")
         raise Exception("camera init failed")
-    return camera
+    return cameras
 
-
-def camConfig(camera, **kwargs):
-
-    if camera.GetDeviceInfo().GetModelName() == "Emulation":
-        camera.Open()
-        grabResult = camera.GrabOne(6000)
-        if grabResult.GrabSucceeded():
-            pt = grabResult.GetPixelType()
-            if pylon.IsPacked(pt):
-                _, new_pt = grabResult._Unpack10or12BitPacked()
-                shape, dtype, pixelformat = grabResult.GetImageFormat(new_pt)
-            else:
-                shape, dtype, pixelformat = grabResult.GetImageFormat(pt)
-                _ = grabResult.GetImageBuffer()
-        else:
-            raise Exception()
-
-        camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
-        return (shape, dtype)
-
-    camera.Open()
-
-    PixelFormat = camera.PixelFormat.GetValue()
-
-    print("resolution : ", f"{camera.Width.GetValue()}X{camera.Height.GetValue()}")
-    print("Format : ", PixelFormat)
-
-    grabResult = camera.GrabOne(1000)
-    if grabResult.GrabSucceeded():
-        pt = grabResult.GetPixelType()
-        if pylon.IsPacked(pt):
-            _, new_pt = grabResult._Unpack10or12BitPacked()
-            shape, dtype, pixelformat = grabResult.GetImageFormat(new_pt)
-        else:
-            shape, dtype, pixelformat = grabResult.GetImageFormat(pt)
-            _ = grabResult.GetImageBuffer()
-
-    else:
-        print("grab Failed")
-        raise Exception('grab failed')
-    camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
-
-    return (shape, dtype)
 
 if __name__ == "__main__":
     ## this line enable the camera emulater
@@ -103,8 +191,6 @@ if __name__ == "__main__":
         kwargs = json.load(f)
 
     # parameter
-    display = 1
-    full = True
     bk_color = [200, 200, 200]  # RGB
     pgFps = 30
     delay = 0
@@ -124,9 +210,12 @@ if __name__ == "__main__":
     myfont = pygame.font.SysFont('Comic Sans MS', 25)
 
     # camera init
-    camera = camInit(**kwargs)
-    cam_shape, cam_type = camConfig(camera, **kwargs)
-    shape = np.array((cam_shape[1], cam_shape[0]))
+    cameras = getCams()
+    init_window = InitWindows(cameras)
+    use_cams = init_window.display_cams
+    rec_cams = init_window.rec_cam
+    display = init_window.display_num
+    workpath = init_window.workpath
 
     # console setting
     console = Process(target=show_console)
@@ -135,52 +224,49 @@ if __name__ == "__main__":
     # pygame config
     pygame.display.set_caption("OpenCV camera stream on Pygame")
     pgClock = pygame.time.Clock()
-    init_size = [1300, 400]
-    flags = 0 #pygame.RESIZABLE  # | pygame.DOUBLEBUF | pygame.SCALED  pygame.NOFRAME | #  #pygame.HWSURFACE | pygame.FULLSCREEN pygame.RESIZABLE ||
+    flags = 0  # pygame.RESIZABLE  # | pygame.DOUBLEBUF | pygame.SCALED  pygame.NOFRAME | #  #pygame.HWSURFACE | pygame.FULLSCREEN pygame.RESIZABLE ||
     #     # pygame.HWSURFACE | pygame.DOUBLEBUF
-    if full:
-        flags = flags | pygame.SHOWN | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.NOFRAME #| pygame.FULLSCREEN
-        init_size = [0, 0]
+    flags = flags | pygame.SHOWN | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.NOFRAME  # | pygame.FULLSCREEN
+    init_size = [0, 0]
     screen = pygame.display.set_mode(init_size, display=display, flags=flags)
     screen.fill(bk_color)
     pygame.display.update()
     sc_shape = np.array(pygame.display.get_window_size())
 
+    # PygCam setting
+    pyg_cameras = []
+    for cam in use_cams:
+        pyg_cameras.append(PygCamera(cam, sc_shape))
 
     # loop init
     is_running = True
-    fps_check = False
-    img = np.zeros(shape)
-    scenes = [np.ones(np.append(shape, [3]), dtype=np.uint8)]*delay
 
     # rect config
-    tank_size = np.array([1300, 400])
-    tank_shape = tuple((shape*min(tank_size / shape)).astype(np.int))
-    tank1_cen = tuple(sc_shape//2)
-    tank1_sel = False
-    cover = pygame.rect.Rect((0, 0), tuple(tank_size))
-    cover.center = tank1_cen
 
-    m_pos = (0,0)
+    tank_sel = False
+    m_pos = (0, 0)
+    setDisplace = lambda x: None
 
     # loop start
     while is_running and console.is_alive():
-        # all keyboard event is detected here
 
+        # all keyboard event is detected here
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 is_running = False
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if cover.collidepoint(pygame.mouse.get_pos()):
-                    tank1_sel = True
-                    m_pos = pygame.mouse.get_pos()
+                for obj in reversed(pyg_cameras):
+                    cover = obj.rect
+                    print(obj.camera)
+                    if cover.collidepoint(pygame.mouse.get_pos()):
+                        tank_sel = True
+                        setDisplace = obj.setDisplace
+                        break
+                m_pos = pygame.mouse.get_pos()
 
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-                tank1_sel = False
-
-            if event.type == pygame.VIDEOEXPOSE:
-                fps_check=False
+                tank_sel = False
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_q:
@@ -188,52 +274,38 @@ if __name__ == "__main__":
                     is_running = False
 
         # grab image
-        grabResult = camera.RetrieveResult(1000, pylon.TimeoutHandling_ThrowException)
-
-        if grabResult.GrabSucceeded():
-            buff = grabResult.GetBuffer()
-            img = cv2.cvtColor(np.ndarray(cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2BGR)
-            img = cv2.resize(img, tank_shape, cv2.INTER_NEAREST)
-            img = cv2.blur(img, (3, 3))
-            scenes.append(img)
-        else:
-            raise Exception("camera grab failed")
 
         # the rects will be updated, it is the key point to take fps stable
         rects = []
 
         # update the pos
-        if tank1_sel:
+        if tank_sel:
             rects.append(screen.fill(bk_color))
             c_pos = pygame.mouse.get_pos()
-            tank1_cen = (tank1_cen[0]+c_pos[0]-m_pos[0], tank1_cen[1]+c_pos[1]-m_pos[1])
+            setDisplace((c_pos[0]-m_pos[0], c_pos[1]-m_pos[1]))
             m_pos = c_pos
 
         # update the screen
-        # rects = [screen.fill(bk_color)]
-        last_img = scenes.pop(0)
-        frame = pygame.image.frombuffer(last_img.tobytes(), tank_shape, 'RGB')
-        #frame = pygame.transform.scale(frame, tuple((shape * sc_rat).astype(int)))
-        rect = frame.get_rect()
-        rect.center = tank1_cen
-        cover = screen.blit(frame, rect)
-        rects.append(cover)
+        for obj in pyg_cameras:
+            frame = obj.update()
+            rect = obj.rect
+            cover = screen.blit(frame, rect)
+            rects.append(rect)
         pygame.display.update(rects)
 
         pgClock.tick(pgFps)
-        crack += 0
+        crack += 1
 
-        if fps_check and pgClock.get_time() > 1200/(pgFps):
+        if pgClock.get_time() > 1200 / (pgFps):
+            crack += 1
             pass
-            #print("lagging!, interval =", pgClock.get_time())
         else:
-            crack=0
+            crack = 0
 
         if crack > 5:
-            break
-
-        fps_check = True
+            print("lagging!, interval =", pgClock.get_time(), "ms")
 
     pygame.quit()
-    camera.Close()
+    for cam in pyg_cameras:
+        cam.camera.Close()
     console.terminate()

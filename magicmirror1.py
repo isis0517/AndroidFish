@@ -140,7 +140,7 @@ class PygCamera:
         return (shape, dtype)
 
 
-def show_console():
+def show_console(conn, ):
     # 讀入影片,由於參數傳遞的關係，數據必須先預處理成list才能避免傳遞時使用傳址的方式
     # 第1步，例項化object，建立視窗window
     window = tk.Tk()
@@ -240,6 +240,7 @@ if __name__ == "__main__":
 
     # loop init
     is_running = True
+    is_exp = True
 
     # rect config
 
@@ -273,7 +274,11 @@ if __name__ == "__main__":
                     # Q -> kill the process
                     is_running = False
 
-        # grab image
+        # console trigger
+        if False:   # if console set some values
+            pass
+            # update the value
+
 
         # the rects will be updated, it is the key point to take fps stable
         rects = []
@@ -286,11 +291,12 @@ if __name__ == "__main__":
             m_pos = c_pos
 
         # update the screen
-        for obj in pyg_cameras:
-            frame = obj.update()
-            rect = obj.rect
-            cover = screen.blit(frame, rect)
-            rects.append(rect)
+        if is_exp:
+            for obj in pyg_cameras:
+                frame = obj.update()
+                rect = obj.rect
+                cover = screen.blit(frame, rect)
+                rects.append(rect)
         pygame.display.update(rects)
 
         pgClock.tick(pgFps)

@@ -6,11 +6,13 @@ import cv2
 from time import sleep
 import time
 import sys, os
+import tkinter as tk
+import tkinter.ttk
 from threading import Timer, Event
-from tqdm import tqdm
-
-from pypylon import genicam
-from pypylon import pylon
+# from tqdm import tqdm
+#
+# from pypylon import genicam
+# from pypylon import pylon
 #import pygame
 
 def test_2can():
@@ -252,12 +254,70 @@ def test(a):
 def hello():
     print("hello, world")
 
+def show_console(conn, setting):
+    # 讀入影片,由於參數傳遞的關係，數據必須先預處理成list才能避免傳遞時使用傳址的方式
+    # 第1步，例項化object，建立視窗window
+
+    def sleepbaby():
+        time.sleep(10)
+        print("i am sleep baby")
+    p = Process(target=sleepbaby)
+    window = tk.Tk()
+
+    # 第2步，給視窗的視覺化起名字
+    window.title('console panel')
+
+    # 第3步，設定視窗的大小(長 * 寬)
+    window.geometry('500x500')  # 這裡的乘是小x
+
+    # 第4步，在圖形介面上設定標籤
+    var = tk.StringVar()  # 將label標籤的內容設定為字元型別，用var來接收hit_me函式的傳出內容用以顯示在標籤上
+    Lable1 = tk.Label(window, text="text", bg='green', fg='white', font=('Arial', 12), width=30, height=2)
+    # 說明： bg為背景，fg為字型顏色，font為字型，width為長，height為高，這裡的長和高是字元的長和高，比如height=2,就是標籤有2個字元這麼高
+    Lable1.pack()
+    Lable2 = tk.Label(window, text="text", bg='blue', fg='white', font=('Arial', 12), width=30, height=2)
+    # 說明： bg為背景，fg為字型顏色，font為字型，width為長，height為高，這裡的長和高是字元的長和高，比如height=2,就是標籤有2個字元這麼高
+    Lable2.pack()
+    def update():
+        now = time.time()
+        Lable1['text'] = f"{now:.2f}"
+        if conn.poll():
+            print("setting!")
+            info_dict = conn.recv()
+            Lable2['text'] = info_dict['label2']
+        window.after(1, update)
+    Button1 = tk.Button(window, text="test something", command=lambda : setting.send(10))
+    Button1.pack()
+
+    # 第6步，主視窗迴圈顯示
+    window.after(1, update)
+    window.mainloop()
+    # 注意，loop因為是迴圈的意思，window.mainloop就會讓window不斷的重新整理，如果沒有mainloop,就是一個靜態的window,傳入進去的值就不會有迴圈，mainloop就相當於一個很大的while迴圈，有個while，每點選一次就會更新一次，所以我們必須要有迴圈
+    # 所有的視窗檔案都必須有類似的mainloop函式，mainloop是視窗檔案的關鍵的關鍵。
 
 if __name__ == "__main__":
 
+    conn_rev, conn_sed = Pipe(False)
+    sett_get, sett_put = Pipe(False)
+    console = Process(target=show_console, args=(conn_rev, sett_put))
+    console.start()
+    time.sleep(1)
+    conn_sed.send({"label2": "i am ready"})
+    time.sleep(1)
+    conn_sed.send({"label2": "i am ready, NOW"})
+    time.sleep(1)
+    conn_sed.send({"label2": "i am ready, PLZ"})
+    time.sleep(1)
+    conn_sed.send({"label2": "i am going to died!"})
+    time.sleep(1)
+    conn_sed.send({"label2": "GO"})
+
+    while console.is_alive():
+        if sett_get.poll():
+            print(sett_get.recv())
+    exit()
     Test2()
 
-    exit()
     img = np.zeros((100,200), dtype='uint8')
     print(cv2.resize(img, (20,10)).shape)
 

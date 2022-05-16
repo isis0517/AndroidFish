@@ -285,10 +285,12 @@ class Console(Process):
         def recording():
             console_dict['state'] = "recording"
             config["record"] = True
+            setting()
 
         def done():
             exp_repeat_entry.insert(tk.END, str(int(exp_repeat_entry.get())-1))
             config["record"] = False
+            setting()
 
         def execute():
             for child in stage_frame.winfo_children():
@@ -297,7 +299,10 @@ class Console(Process):
                 child.configure(state='disable')
             repeat = int(exp_repeat_entry.get())
             break_sec = int(exp_break_entry.get())
-            duration_sec = int (exp_duration_entry.get())
+            duration_sec = int(exp_duration_entry.get())
+            foldername = exp_filename_entry.get()
+            config['folder'] = foldername
+            config['duration'] = duration_sec
             sec = 0
             for s in range(repeat):
                 schedule.append(window.after(sec*1000, breaking))
@@ -337,6 +342,63 @@ class Console(Process):
         window.after(1, update)
         window.mainloop()
 
+class RecCamera(Process):
+    def __init__(self, camera, fps=30):
+        super().__init__()
+        self.camera_model = camera.GetDeviceInfo().GetModelName()
+        self.path = ""
+        self.duration = 10
+        self.fps = fps
+        self.config = {"fps": fps}
+
+    def setFolder(self, path):
+        if os.path.exists(path):
+            s = 0
+            while os.path.exists(path+f"{s}"):
+                s+=1
+            path = path+f"{s}"
+        self.path = path
+
+    def setDuration(self, duration):
+        self.duration = duration
+
+    def setConfig(self, config: dict):
+        for key, value in config.items():
+            self.config[key] = value
+
+    def run(self):
+
+        T1 = pylon.TlFactory.GetInstance()
+        lstDevices = T1.EnumerateDevices()
+        num = 0
+        for s, cam_info in enumerate(lstDevices):
+            camera = pylon.InstantCamera(T1.CreateFirstDevice(cam_info))
+            if self.camera_model == camera.GetDeviceInfo().GetModelName():
+                num = s
+        camera = pylon.InstantCamera(T1.CreateFirstDevice(lstDevices[num]))
+
+        camera.Open()
+        camera.AcquisitionFrameRateEnable.SetValue(True)
+        camera.AcquisitionFrameRate.SetValue(self.fps)
+        camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+
+        path = self.path
+        if os.path.exists(path):
+            s = 0
+            while os.path.exists(path+f"{s}"):
+                s+=1
+            path = path+f"{s}"
+        os.mkdir(path)
+
+        with open(os.path.join(path, "config"), 'w') as file:
+            json.dump(self.config, file)
+
+        for s in range(self.duration*self.fps):
+            grabResult = camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
+            if grabResult.GrabSucceeded():
+                np.save(os.path.join(path, f"{s}.npy"), grabResult.GetArray())
+        camera.Close()
+
 
 def getCams():
     try:
@@ -373,11 +435,6 @@ if __name__ == "__main__":
 
     ## this line enable the camera emulater
     os.environ["PYLON_CAMEMU"] = "1"
-    if not os.path.exists("mmconfig.json"):
-        with open("mmconfig.json", 'w'):
-            pass
-    with open('mmconfig.json', 'r') as f:
-        kwargs = json.load(f)
 
     # parameter
     bk_color = [200, 200, 200]  # RGB
@@ -436,10 +493,12 @@ if __name__ == "__main__":
     is_display = True
 
     # rect config
-
     tank_sel = False
     m_pos = (0, 0)
     setDisplace = lambda x: None
+
+    # rec config
+    recorder = RecCamera(rec_cams)
 
     # loop start
     while is_running and console.is_alive():
@@ -482,6 +541,21 @@ if __name__ == "__main__":
                 board.digital[12].write(1)
             else:
                 board.digital[12].write(0)
+
+            if 'record' in config.keys():
+                if config['record']:
+                    if not recorder.is_alive():
+                        savepath = os.path.join(workpath, config['folder'])
+                        recorder.setFolder(savepath)
+                        recorder.setDuration(config['duration'])
+                        recorder.start()
+                elif recorder.is_alive():
+                    recorder.terminate()
+                    del recorder
+                    recorder = RecCamera(rec_cams)
+                else:
+                    del recorder
+                    recorder = RecCamera(rec_cams)
 
             rects.append(screen.fill(bk_color))
             # update the value

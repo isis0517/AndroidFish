@@ -7,7 +7,7 @@ from time import sleep
 import time
 import sys, os
 import tkinter as tk
-import tkinter.ttk
+import tkinter.ttk as ttk
 from threading import Timer, Event
 # from tqdm import tqdm
 #
@@ -254,6 +254,7 @@ def test(a):
 def hello():
     print("hello, world")
 
+
 def show_console(conn, setting):
     # 讀入影片,由於參數傳遞的關係，數據必須先預處理成list才能避免傳遞時使用傳址的方式
     # 第1步，例項化object，建立視窗window
@@ -286,7 +287,7 @@ def show_console(conn, setting):
             info_dict = conn.recv()
             Lable2['text'] = info_dict['label2']
         window.after(1, update)
-    Button1 = tk.Button(window, text="test something", command=lambda : setting.send(10))
+    Button1 = tk.Button(window, text="test something", command=lambda: setting.send(10))
     Button1.pack()
 
     # 第6步，主視窗迴圈顯示
@@ -295,7 +296,133 @@ def show_console(conn, setting):
     # 注意，loop因為是迴圈的意思，window.mainloop就會讓window不斷的重新整理，如果沒有mainloop,就是一個靜態的window,傳入進去的值就不會有迴圈，mainloop就相當於一個很大的while迴圈，有個while，每點選一次就會更新一次，所以我們必須要有迴圈
     # 所有的視窗檔案都必須有類似的mainloop函式，mainloop是視窗檔案的關鍵的關鍵。
 
+class Console(Process):
+    def __init__(self, cams):
+        super().__init__()
+        self.conn1 = Pipe(False)
+        self.conn2 = Pipe(False)
+        self.cams = cams
+
+    def run(self):
+        self.show_console(self.conn1[0], self.conn2[1], self.cams)
+
+    def poll(self):
+        return self.conn2[0].poll()
+
+    def getConfig(self):
+        return self.conn2[0].recv()
+
+    def setState(self, state: dict):
+        self.conn1[1].send(state)
+
+    def show_console(self, conn_recv, conn_send, init_cams):
+
+        window = tk.Tk()
+        window.title('console panel')
+        window.geometry('500x500')  # 這裡的乘是小x
+
+        stage_frame = ttk.Frame(borderwidth=2, relief='solid')
+        stage_frame.pack(anchor='center')
+
+        stage_title = tk.Label(stage_frame, text="Stage config", font=('Arial', 12), width=10, height=2, anchor='center')
+        stage_title.grid(column=0, row=0, columnspan=5)
+
+        stage_column = ["cam model", "show", "lag", "random", "randfile"]
+        stage_col_labels = []
+        for col_num, text in enumerate(stage_column):
+            stage_col_labels.append(tk.Label(stage_frame, text=text, width=10, anchor='center'))
+            stage_col_labels[-1].grid(column=col_num, row=1)
+
+        row_num = 2
+        stage_cam_labels = []
+        stage_show_vars = []
+        stage_lag_entrys = []
+        stage_random_vars = []
+        stage_random_entrys = []
+        for s, cam in enumerate(init_cams):
+            stage_cam_labels.append(tk.Label(stage_frame, text=cam, anchor='w'))
+            stage_cam_labels[-1].grid(column=0, row=row_num)
+
+            stage_show_vars.append(tk.IntVar(window))
+            checkbox = ttk.Checkbutton(stage_frame, variable=stage_show_vars[-1])
+            checkbox.grid(column=1, row=row_num)
+            stage_show_vars[-1].set(1)
+
+            stage_lag_entrys.append(tk.Entry(stage_frame, width=3))
+            stage_lag_entrys[-1].grid(column=2, row=row_num)
+            stage_lag_entrys[-1].insert(tk.END, "0")
+
+            stage_random_vars.append(tk.IntVar(window))
+            checkbox = ttk.Checkbutton(stage_frame, variable=stage_random_vars[-1])
+            checkbox.grid(column=3, row=row_num)
+
+            stage_random_entrys.append(tk.Entry(stage_frame, width=20))
+            stage_random_entrys[-1].grid(column=4, row=row_num)
+            stage_random_entrys[-1].insert(tk.END, "")
+
+            row_num += 1
+
+        stage_display_var = tk.IntVar(window)
+        stage_display_var.set(1)
+        stage_light_var = tk.IntVar(window)
+        checkbox = ttk.Checkbutton(stage_frame, variable=stage_display_var, text="display")
+        checkbox.grid(column=2, row=row_num)
+        checkbox = ttk.Checkbutton(stage_frame, variable=stage_light_var, text="light")
+        checkbox.grid(column=3, row=row_num)
+
+        config = {}
+        def setting():
+            for s, cam in enumerate(init_cams):
+                config[s] = {"show": stage_show_vars[s].get(), "lag": int(stage_lag_entrys[s].get())
+                             , "random": stage_random_vars[s].get(), "rand_path": stage_random_entrys[s].get()}
+            config["display"] = stage_display_var.get()
+            config["light"] = stage_light_var.get()
+            conn_send.send(config)
+        stage_set_but = tk.Button(stage_frame, text="SET", command=setting, heigh=1, width=6, font=('Arial Bold', 12))
+        stage_set_but.grid(column=4, row=row_num)
+        setting()
+
+        exp_frame = ttk.Frame(borderwidth=2, relief='solid')
+        exp_frame.pack(anchor='center')
+
+        exp_title = tk.Label(exp_frame, text="Experiment", font=('Arial', 12), width=10, height=2, anchor='center')
+        exp_title.grid(column=0, row=0, columnspan=5)
+
+        exp_break_label = tk.Label(exp_frame, text="Break time")
+        exp_break_label.grid(column=0, row=1)
+        exp_break_entry = tk.Entry(exp_frame)
+        exp_break_entry.grid(column=1, row=1)
+
+
+
+        def execute():
+            for child in stage_frame.winfo_children():
+                child.configure(state='disable')
+
+        exp_execute_but = tk.Button(exp_frame, text="EXECUTE", command=execute)
+        exp_execute_but.grid(column=4, row=row_num)
+
+        def update():
+            if conn_recv.poll():
+                pass
+            window.after(1, update)
+
+        # 第6步，主視窗迴圈顯示
+        window.after(1, update)
+        window.mainloop()
+
+        # 注意，loop因為是迴圈的意思，window.mainloop就會讓window不斷的重新整理，如果沒有mainloop,就是一個靜態的window,傳入進去的值就不會有迴圈，mainloop就相當於一個很大的while迴圈，有個while，每點選一次就會更新一次，所以我們必須要有迴圈
+        # 所有的視窗檔案都必須有類似的mainloop函式，mainloop是視窗檔案的關鍵的關鍵。
+
 if __name__ == "__main__":
+
+
+    console = Console([1,2,3])
+    console.start()
+    while console.is_alive():
+        if console.poll():
+            print(console.getConfig())
+    exit()
 
     conn_rev, conn_sed = Pipe(False)
     sett_get, sett_put = Pipe(False)

@@ -1,14 +1,16 @@
 import pygame
 import numpy as np
 import time
+import datetime
 from pypylon import pylon
 import cv2
 import os
 import json
 import tkinter as tk
 from tkinter import ttk
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Pipe
 from pyfirmata2 import Arduino
+
 
 
 class InitWindows(tk.Frame):
@@ -65,6 +67,7 @@ class InitWindows(tk.Frame):
 
 class PygCamera:
     def __init__(self, camera: pylon.InstantCamera, sc_shape, tank_size=np.array([1300, 400])):
+        self.model = camera.GetDeviceInfo().GetModelName()
         self.cam_shape, self.dtype = self.camConfig(camera)
         self.shape = np.array([self.cam_shape[1], self.cam_shape[0]])
         self.camera = camera
@@ -75,7 +78,7 @@ class PygCamera:
 
     def setDelayCount(self, count):
         self.delaycount = count
-        self.scenes = [np.zeros(np.append(self.shape, [3]), dtype=np.uint8)] * count
+        self.scenes = [np.zeros(np.append(self.tank_shape, [3]), dtype=np.uint8)] * count
 
     def grabCam(self):
         grabResult = self.camera.RetrieveResult(1000, pylon.TimeoutHandling_ThrowException)
@@ -139,28 +142,200 @@ class PygCamera:
 
         return (shape, dtype)
 
+class Console(Process):
+    def __init__(self, cams):
+        super().__init__()
+        self.conn1 = Pipe(False)
+        self.conn2 = Pipe(False)
+        self.cams = cams
 
-def show_console(conn, ):
-    # 讀入影片,由於參數傳遞的關係，數據必須先預處理成list才能避免傳遞時使用傳址的方式
-    # 第1步，例項化object，建立視窗window
-    window = tk.Tk()
+    def run(self):
+        self.show_console(self.conn1[0], self.conn2[1], self.cams)
 
-    # 第2步，給視窗的視覺化起名字
-    window.title('console panel')
+    def poll(self):
+        return self.conn2[0].poll()
 
-    # 第3步，設定視窗的大小(長 * 寬)
-    window.geometry('500x500')  # 這裡的乘是小x
+    def getConfig(self):
+        return self.conn2[0].recv()
 
-    # 第4步，在圖形介面上設定標籤
-    var = tk.StringVar()  # 將label標籤的內容設定為字元型別，用var來接收hit_me函式的傳出內容用以顯示在標籤上
-    Lable1 = tk.Label(window, textvariable=var, bg='green', fg='white', font=('Arial', 12), width=30, height=2)
-    # 說明： bg為背景，fg為字型顏色，font為字型，width為長，height為高，這裡的長和高是字元的長和高，比如height=2,就是標籤有2個字元這麼高
-    Lable1.pack()
+    def setState(self, state: dict):
+        self.conn1[1].send(state)
 
-    # 第6步，主視窗迴圈顯示
-    window.mainloop()
-    # 注意，loop因為是迴圈的意思，window.mainloop就會讓window不斷的重新整理，如果沒有mainloop,就是一個靜態的window,傳入進去的值就不會有迴圈，mainloop就相當於一個很大的while迴圈，有個while，每點選一次就會更新一次，所以我們必須要有迴圈
-    # 所有的視窗檔案都必須有類似的mainloop函式，mainloop是視窗檔案的關鍵的關鍵。
+    def show_console(self, conn_recv, conn_send, init_cams):
+
+        config = {"record": False}
+        schedule = []
+        console_dict = {"state": "idle"}
+        window = tk.Tk()
+        window.title('console panel')
+        window.geometry('500x500')  # 這裡的乘是小x
+
+        stage_frame = ttk.Frame(borderwidth=2, relief='solid')
+        stage_frame.pack(anchor='center')
+
+        stage_title = tk.Label(stage_frame, text="Stage config", font=('Arial', 12), width=10, height=2, anchor='center')
+        stage_title.grid(column=0, row=0, columnspan=5)
+
+        stage_column = ["cam model", "show", "lag", "random", "randfile"]
+        stage_col_labels = []
+        for col_num, text in enumerate(stage_column):
+            stage_col_labels.append(tk.Label(stage_frame, text=text, width=10, anchor='center'))
+            stage_col_labels[-1].grid(column=col_num, row=1)
+
+        row_num = 2
+        stage_cam_labels = []
+        stage_show_vars = []
+        stage_lag_entrys = []
+        stage_random_vars = []
+        stage_random_entrys = []
+        for s, cam in enumerate(init_cams):
+            stage_cam_labels.append(tk.Label(stage_frame, text=cam, anchor='w'))
+            stage_cam_labels[-1].grid(column=0, row=row_num)
+
+            stage_show_vars.append(tk.IntVar(window))
+            checkbox = ttk.Checkbutton(stage_frame, variable=stage_show_vars[-1])
+            checkbox.grid(column=1, row=row_num)
+            stage_show_vars[-1].set(1)
+
+            stage_lag_entrys.append(tk.Entry(stage_frame, width=3))
+            stage_lag_entrys[-1].grid(column=2, row=row_num)
+            stage_lag_entrys[-1].insert(tk.END, "0")
+
+            stage_random_vars.append(tk.IntVar(window))
+            checkbox = ttk.Checkbutton(stage_frame, variable=stage_random_vars[-1])
+            checkbox.grid(column=3, row=row_num)
+
+            stage_random_entrys.append(tk.Entry(stage_frame, width=20))
+            stage_random_entrys[-1].grid(column=4, row=row_num)
+            stage_random_entrys[-1].insert(tk.END, "")
+
+            row_num += 1
+
+        stage_display_var = tk.IntVar(window)
+        stage_display_var.set(1)
+        stage_light_var = tk.IntVar(window)
+        stage_light_var.set(1)
+        checkbox = ttk.Checkbutton(stage_frame, variable=stage_display_var, text="display")
+        checkbox.grid(column=2, row=row_num)
+        checkbox = ttk.Checkbutton(stage_frame, variable=stage_light_var, text="light")
+        checkbox.grid(column=3, row=row_num)
+
+        def setting():
+            for s, cam in enumerate(init_cams):
+                config[s] = {"show": stage_show_vars[s].get(), "lag": int(stage_lag_entrys[s].get())
+                             , "random": stage_random_vars[s].get(), "rand_path": stage_random_entrys[s].get()}
+            config["display"] = stage_display_var.get()
+            config["light"] = stage_light_var.get()
+            conn_send.send(config)
+
+        def load(load_config):
+            for s, cam in enumerate(init_cams):
+                stage_show_vars[s].set(load_config[s]['show'])
+                stage_lag_entrys[s]['text'] = load_config[s]['lag']
+                stage_random_vars[s].set(load_config[s]['random'])
+                stage_random_entrys[s]['text'] = load_config[s]['rand_path']
+            stage_display_var.set(config["display"])
+            stage_light_var.set(config["light"])
+
+        stage_set_but = tk.Button(stage_frame, text="SET", command=setting, heigh=1, width=6, font=('Arial Bold', 12))
+        stage_set_but.grid(column=4, row=row_num)
+        setting()
+
+        exp_frame = ttk.Frame(borderwidth=2, relief='solid')
+        exp_frame.pack(anchor='center')
+
+        exp_title = tk.Label(exp_frame, text="Experiment", font=('Arial', 12), width=10, height=2, anchor='center')
+        exp_title.grid(column=0, row=0, columnspan=5)
+
+        exp_break_label = tk.Label(exp_frame, text="Break time (sec)")
+        exp_break_label.grid(column=0, row=1)
+        exp_break_entry = tk.Entry(exp_frame)
+        exp_break_entry.grid(column=1, row=1)
+
+        exp_duration_label = tk.Label(exp_frame, text="Duration (sec)")
+        exp_duration_label.grid(column=0, row=2)
+        exp_duration_entry = tk.Entry(exp_frame)
+        exp_duration_entry.grid(column=1, row=2)
+
+        exp_filename_label = tk.Label(exp_frame, text="Saving name")
+        exp_filename_label.grid(column=0, row=3)
+        exp_filename_entry = tk.Entry(exp_frame)
+        exp_filename_entry.insert(tk.END, "exp")
+        exp_filename_entry.grid(column=1, row=3)
+
+        exp_repeat_label = tk.Label(exp_frame, text="Repeats")
+        exp_repeat_label.grid(column=0, row=4)
+        exp_repeat_entry = tk.Entry(exp_frame)
+        exp_repeat_entry.insert(tk.END, '1')
+        exp_repeat_entry.grid(column=1, row=4)
+
+        def breaking():
+            console_dict['state'] = "breaking"
+            config['display'] = False
+            config['light'] = False
+            load(config)
+            setting()
+
+        def lighting():
+            config['display'] = True
+            config['light'] = True
+            load(config)
+            setting()
+
+        def recording():
+            console_dict['state'] = "recording"
+            config["record"] = True
+
+        def done():
+            exp_repeat_entry.insert(tk.END, str(int(exp_repeat_entry.get())-1))
+            config["record"] = False
+
+        def execute():
+            for child in stage_frame.winfo_children():
+                child.configure(state='disable')
+            for child in exp_frame.winfo_children():
+                child.configure(state='disable')
+            repeat = int(exp_repeat_entry.get())
+            break_sec = int(exp_break_entry.get())
+            duration_sec = int (exp_duration_entry.get())
+            sec = 0
+            for s in range(repeat):
+                schedule.append(window.after(sec*1000, breaking))
+                sec += break_sec
+                schedule.append(window.after(sec*1000, lighting))
+                sec += 2
+                schedule.append(window.after(sec*1000, recording))
+                sec += duration_sec+5
+                schedule.append(window.after(sec*1000, done))
+            schedule.append(window.after(sec*1000, stop))
+        exp_execute_but = tk.Button(exp_frame, text="EXECUTE", command=execute)
+        exp_execute_but.grid(column=5, row=10)
+
+        exp_current_label = tk.Label(window)
+        exp_current_label.pack()
+
+        def stop():
+            console_dict['state'] = "idle"
+            for work in schedule:
+                window.after_cancel(work)
+            for child in stage_frame.winfo_children():
+                child.configure(state='normal')
+            for child in exp_frame.winfo_children():
+                child.configure(state='normal')
+            config['record'] = False
+            setting()
+        stop_but = tk.Button(window, text="STOP", heigh=1, width=6, font=('Arial Bold', 14), command=stop)
+        stop_but.pack(anchor="n")
+
+        def update():
+            if conn_recv.poll():
+                pass
+            exp_current_label['text'] = console_dict['state']
+            window.after(1, update)
+
+        # 第6步，主視窗迴圈顯示
+        window.after(1, update)
+        window.mainloop()
 
 
 def getCams():
@@ -180,8 +355,22 @@ def getCams():
         raise Exception("camera init failed")
     return cameras
 
+class Logger:
+    def __init__(self, rootpath):
+        self.rootpath = rootpath
+        self.file = open(os.path.join(rootpath, "mm_log"), 'w')
+        self.headers = []
+
+    def log(self, mes):
+        time_stamp = datetime.datetime.now().strftime("%Y/%d/%m %H:%M:%S ")
+        self.file.write(time_stamp+mes)
+
+    def __del__(self):
+        self.file.close()
+
 
 if __name__ == "__main__":
+
     ## this line enable the camera emulater
     os.environ["PYLON_CAMEMU"] = "1"
     if not os.path.exists("mmconfig.json"):
@@ -197,12 +386,13 @@ if __name__ == "__main__":
     crack = 0
 
     # loading arduino
-    # PORT = Arduino.AUTODETECT
-    # if not isinstance(PORT, str):
-    #     print("no Arduino is detected")
-    # else:
-    #     print(f"Arduino is detected at PORT {PORT}")
-    #     board = Arduino(PORT)
+    PORT = Arduino.AUTODETECT
+    if not isinstance(PORT, str):
+        print("no Arduino is detected")
+    else:
+        print(f"Arduino is detected at PORT {PORT}")
+
+    board = Arduino("COM4")
 
     # pygame init
     pygame.init()
@@ -217,9 +407,6 @@ if __name__ == "__main__":
     display = init_window.display_num
     workpath = init_window.workpath
 
-    # console setting
-    console = Process(target=show_console)
-    console.start()
 
     # pygame config
     pygame.display.set_caption("OpenCV camera stream on Pygame")
@@ -235,12 +422,18 @@ if __name__ == "__main__":
 
     # PygCam setting
     pyg_cameras = []
+    show_cameras = []
     for cam in use_cams:
         pyg_cameras.append(PygCamera(cam, sc_shape))
+        show_cameras.append((pyg_cameras[-1]))
+
+    # console setting
+    console = Console([cam.model for cam in pyg_cameras])
+    console.start()
 
     # loop init
     is_running = True
-    is_exp = True
+    is_display = True
 
     # rect config
 
@@ -250,6 +443,8 @@ if __name__ == "__main__":
 
     # loop start
     while is_running and console.is_alive():
+        # the rects will be updated, it is the key point to take fps stable
+        rects = []
 
         # all keyboard event is detected here
         for event in pygame.event.get():
@@ -259,7 +454,6 @@ if __name__ == "__main__":
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 for obj in reversed(pyg_cameras):
                     cover = obj.rect
-                    print(obj.camera)
                     if cover.collidepoint(pygame.mouse.get_pos()):
                         tank_sel = True
                         setDisplace = obj.setDisplace
@@ -275,13 +469,23 @@ if __name__ == "__main__":
                     is_running = False
 
         # console trigger
-        if False:   # if console set some values
-            pass
+        if console.poll():   # if console set some values
+            config = console.getConfig()
+            show_cameras = []
+            for s, obj in enumerate(pyg_cameras):
+                if config[s]["show"] == 1:
+                    show_cameras.append(obj)
+                lag = config[s]["lag"]
+                obj.setDelayCount(pgFps*lag)
+            is_display = config["display"]==1
+            if config["light"] == 1:
+                board.digital[12].write(1)
+            else:
+                board.digital[12].write(0)
+
+            rects.append(screen.fill(bk_color))
             # update the value
 
-
-        # the rects will be updated, it is the key point to take fps stable
-        rects = []
 
         # update the pos
         if tank_sel:
@@ -291,12 +495,15 @@ if __name__ == "__main__":
             m_pos = c_pos
 
         # update the screen
-        if is_exp:
-            for obj in pyg_cameras:
-                frame = obj.update()
-                rect = obj.rect
-                cover = screen.blit(frame, rect)
-                rects.append(rect)
+        for obj in show_cameras:
+            frame = obj.update()
+            rect = obj.rect
+            cover = screen.blit(frame, rect)
+            rects.append(rect)
+
+        if not is_display:
+            rects.append(screen.fill([0, 0, 0]))
+
         pygame.display.update(rects)
 
         pgClock.tick(pgFps)

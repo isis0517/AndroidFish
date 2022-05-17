@@ -75,6 +75,7 @@ class PygCamera:
         self.rect = pygame.Rect((0, 0), tuple(self.tank_shape))
         self.rect.center = tuple(sc_shape // 2)
         self.setDelayCount(0)
+        self.threshold = 40
 
     def setDelayCount(self, count):
         self.delaycount = count
@@ -88,7 +89,7 @@ class PygCamera:
             img = cv2.cvtColor(np.ndarray(self.cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2BGR)
             img = cv2.resize(img, self.tank_shape, cv2.INTER_NEAREST)
             img = cv2.blur(img, (3, 3))
-            fg = np.linalg.norm(img, axis=2) > 30
+            fg = np.linalg.norm(img, axis=2) > self.threshold
             img = cv2.bitwise_and(img, img, mask=fg.astype(np.uint8))
             self.scenes.append(img)
         else:
@@ -178,7 +179,7 @@ class Console(Process):
         stage_title = tk.Label(stage_frame, text="Stage config", font=('Arial', 12), width=10, height=2, anchor='center')
         stage_title.grid(column=0, row=0, columnspan=5)
 
-        stage_column = ["cam model", "show", "lag", "random", "randfile"]
+        stage_column = ["cam model", "show", "lag", "random", "threshold"]
         stage_col_labels = []
         for col_num, text in enumerate(stage_column):
             stage_col_labels.append(tk.Label(stage_frame, text=text, width=10, anchor='center'))
@@ -189,7 +190,7 @@ class Console(Process):
         stage_show_vars = []
         stage_lag_entrys = []
         stage_random_vars = []
-        stage_random_entrys = []
+        stage_threshold_entrys = []
         for s, cam in enumerate(init_cams):
             stage_cam_labels.append(tk.Label(stage_frame, text=cam, anchor='w'))
             stage_cam_labels[-1].grid(column=0, row=row_num)
@@ -207,9 +208,9 @@ class Console(Process):
             checkbox = ttk.Checkbutton(stage_frame, variable=stage_random_vars[-1])
             checkbox.grid(column=3, row=row_num)
 
-            stage_random_entrys.append(tk.Entry(stage_frame, width=20))
-            stage_random_entrys[-1].grid(column=4, row=row_num)
-            stage_random_entrys[-1].insert(tk.END, "")
+            stage_threshold_entrys.append(tk.Entry(stage_frame, width=4))
+            stage_threshold_entrys[-1].grid(column=4, row=row_num)
+            stage_threshold_entrys[-1].insert(tk.END, "30")
 
             row_num += 1
 
@@ -225,7 +226,7 @@ class Console(Process):
         def setting():
             for s, cam in enumerate(init_cams):
                 config[s] = {"show": stage_show_vars[s].get(), "lag": int(stage_lag_entrys[s].get())
-                             , "random": stage_random_vars[s].get(), "rand_path": stage_random_entrys[s].get()}
+                             , "random": stage_random_vars[s].get(), "threshold": int(stage_threshold_entrys[s].get())}
             config["display"] = stage_display_var.get()
             config["light"] = stage_light_var.get()
             conn_send.send(config)
@@ -235,7 +236,7 @@ class Console(Process):
                 stage_show_vars[s].set(load_config[s]['show'])
                 stage_lag_entrys[s]['text'] = load_config[s]['lag']
                 stage_random_vars[s].set(load_config[s]['random'])
-                stage_random_entrys[s]['text'] = load_config[s]['rand_path']
+                stage_threshold_entrys[s]['text'] = load_config[s]['rand_path']
             stage_display_var.set(config["display"])
             stage_light_var.set(config["light"])
 
@@ -538,8 +539,9 @@ if __name__ == "__main__":
                 if config[s]["show"] == 1:
                     show_cameras.append(obj)
                 lag = config[s]["lag"]
+                obj.threshold = config[s]["threshold"]
                 obj.setDelayCount(pgFps*lag)
-            is_display = config["display"]==1
+            is_display = config["display"] == 1
             if config["light"] == 1:
                 board.digital[12].write(1)
             else:

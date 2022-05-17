@@ -45,6 +45,20 @@ class InitWindows(tk.Frame):
         self.display_entry.grid(column=1, row=row_num, sticky="W")
         row_num += 1
 
+        self.pgFps_prompt = tk.Label(self, text="pygame frame rate:")
+        self.pgFps_prompt.grid(column=0, row=row_num, sticky="W")
+        self.pgFps_entry = tk.Entry(self, width=5)
+        self.pgFps_entry.insert(tk.END, 30)
+        self.pgFps_entry.grid(column=1, row=row_num, sticky="W")
+        row_num += 1
+
+        self.arport_prompt = tk.Label(self, text="Arduino port")
+        self.arport_prompt.grid(column=0, row=row_num, sticky="W")
+        self.arport_entry = tk.Entry(self, width=5)
+        self.arport_entry.insert(tk.END, Arduino.AUTODETECT)
+        self.arport_entry.grid(column=1, row=row_num, sticky="W")
+        row_num += 1
+
         self.check_btn = tk.Button(self, text="Check", command=self.check, width=10, heigh=2)
         self.check_btn.grid(column=0, row=row_num, columnspan=2)
         self.pack(fill="both", expand=True)
@@ -62,6 +76,8 @@ class InitWindows(tk.Frame):
 
         self.display_num = int(self.display_entry.get())
         self.workpath = self.path_entry.get()
+        self.pgFps = int(self.pgFps_entry.get())
+        self.port = self.arport_entry.get()
         self.root.destroy()
 
 
@@ -76,6 +92,7 @@ class PygCamera:
         self.rect.center = tuple(sc_shape // 2)
         self.setDelayCount(0)
         self.threshold = 40
+        self.COM = False
 
     def setDelayCount(self, count):
         self.delaycount = count
@@ -91,6 +108,11 @@ class PygCamera:
             img = cv2.blur(img, (3, 3))
             fg = np.linalg.norm(img, axis=2) > self.threshold
             img = cv2.bitwise_and(img, img, mask=fg.astype(np.uint8))
+            if self.COM:
+                M = cv2.moments(img)
+                cX = int(M["m10"] / M["m00"])
+                cY = int(M["m01"] / M["m00"])
+                cv2.circle(img, (cX, cY), 5, (255, 255, 255), -1)
             self.scenes.append(img)
         else:
             raise Exception("camera grab failed")
@@ -179,7 +201,7 @@ class Console(Process):
         stage_title = tk.Label(stage_frame, text="Stage config", font=('Arial', 12), width=10, height=2, anchor='center')
         stage_title.grid(column=0, row=0, columnspan=5)
 
-        stage_column = ["cam model", "show", "lag", "random", "threshold"]
+        stage_column = ["cam model", "show", "lag", "center of mass", "threshold"]
         stage_col_labels = []
         for col_num, text in enumerate(stage_column):
             stage_col_labels.append(tk.Label(stage_frame, text=text, width=10, anchor='center'))
@@ -189,7 +211,7 @@ class Console(Process):
         stage_cam_labels = []
         stage_show_vars = []
         stage_lag_entrys = []
-        stage_random_vars = []
+        stage_com_vars = []
         stage_threshold_entrys = []
         for s, cam in enumerate(init_cams):
             stage_cam_labels.append(tk.Label(stage_frame, text=cam, anchor='w'))
@@ -204,8 +226,8 @@ class Console(Process):
             stage_lag_entrys[-1].grid(column=2, row=row_num)
             stage_lag_entrys[-1].insert(tk.END, "0")
 
-            stage_random_vars.append(tk.IntVar(window))
-            checkbox = ttk.Checkbutton(stage_frame, variable=stage_random_vars[-1])
+            stage_com_vars.append(tk.IntVar(window))
+            checkbox = ttk.Checkbutton(stage_frame, variable=stage_com_vars[-1])
             checkbox.grid(column=3, row=row_num)
 
             stage_threshold_entrys.append(tk.Entry(stage_frame, width=4))
@@ -226,7 +248,7 @@ class Console(Process):
         def setting():
             for s, cam in enumerate(init_cams):
                 config[s] = {"show": stage_show_vars[s].get(), "lag": int(stage_lag_entrys[s].get())
-                             , "random": stage_random_vars[s].get(), "threshold": int(stage_threshold_entrys[s].get())}
+                             , "com": stage_com_vars[s].get(), "threshold": int(stage_threshold_entrys[s].get())}
             config["display"] = stage_display_var.get()
             config["light"] = stage_light_var.get()
             conn_send.send(config)
@@ -235,8 +257,8 @@ class Console(Process):
             for s, cam in enumerate(init_cams):
                 stage_show_vars[s].set(load_config[s]['show'])
                 stage_lag_entrys[s]['text'] = load_config[s]['lag']
-                stage_random_vars[s].set(load_config[s]['random'])
-                stage_threshold_entrys[s]['text'] = load_config[s]['rand_path']
+                stage_com_vars[s].set(load_config[s]['com'])
+                stage_threshold_entrys[s]['text'] = load_config[s]['threshold']
             stage_display_var.set(config["display"])
             stage_light_var.set(config["light"])
 
@@ -441,18 +463,7 @@ if __name__ == "__main__":
 
     # parameter
     bk_color = [200, 200, 200]  # RGB
-    pgFps = 30
-    delay = 0
     crack = 0
-
-    # loading arduino
-    PORT = Arduino.AUTODETECT
-    if not isinstance(PORT, str):
-        print("no Arduino is detected")
-    else:
-        print(f"Arduino is detected at PORT {PORT}")
-
-    board = Arduino(PORT)
 
     # pygame init
     pygame.init()
@@ -466,7 +477,11 @@ if __name__ == "__main__":
     rec_cams = init_window.rec_cam
     display = init_window.display_num
     workpath = init_window.workpath
+    pgFps = init_window.pgFps
+    PORT = init_window.port
 
+    # loading arduino
+    board = Arduino(PORT)
 
     # pygame config
     pygame.display.set_caption("OpenCV camera stream on Pygame")
@@ -538,6 +553,10 @@ if __name__ == "__main__":
             for s, obj in enumerate(pyg_cameras):
                 if config[s]["show"] == 1:
                     show_cameras.append(obj)
+                if config[s]["com"] == 1:
+                    obj.COM = True
+                else:
+                    obj.COM = False
                 lag = config[s]["lag"]
                 obj.threshold = config[s]["threshold"]
                 obj.setDelayCount(pgFps*lag)

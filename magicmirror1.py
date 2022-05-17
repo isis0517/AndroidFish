@@ -71,7 +71,7 @@ class PygCamera:
         self.cam_shape, self.dtype = self.camConfig(camera)
         self.shape = np.array([self.cam_shape[1], self.cam_shape[0]])
         self.camera = camera
-        self.tank_shape = tuple((self.shape * min(tank_size / self.shape)).astype(np.int))
+        self.tank_shape = tuple((self.shape * min(tank_size / self.shape)).astype(int))
         self.rect = pygame.Rect((0, 0), tuple(self.tank_shape))
         self.rect.center = tuple(sc_shape // 2)
         self.setDelayCount(0)
@@ -88,6 +88,8 @@ class PygCamera:
             img = cv2.cvtColor(np.ndarray(self.cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2BGR)
             img = cv2.resize(img, self.tank_shape, cv2.INTER_NEAREST)
             img = cv2.blur(img, (3, 3))
+            fg = np.linalg.norm(img, axis=2) > 30
+            img = cv2.bitwise_and(img, img, mask=fg.astype(np.uint8))
             self.scenes.append(img)
         else:
             raise Exception("camera grab failed")
@@ -449,7 +451,7 @@ if __name__ == "__main__":
     else:
         print(f"Arduino is detected at PORT {PORT}")
 
-    board = Arduino("COM4")
+    board = Arduino(PORT)
 
     # pygame init
     pygame.init()

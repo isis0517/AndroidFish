@@ -498,7 +498,8 @@ if __name__ == "__main__":
     setDisplace = lambda x: None
 
     # rec config
-    recorder = RecCamera(rec_cams)
+    if not rec_cams is None:
+        recorder = RecCamera(rec_cams)
 
     # loop start
     while is_running and console.is_alive():
@@ -542,7 +543,7 @@ if __name__ == "__main__":
             else:
                 board.digital[12].write(0)
 
-            if 'record' in config.keys():
+            if 'record' in config.keys() and rec_cams:
                 if config['record']:
                     if not recorder.is_alive():
                         savepath = os.path.join(workpath, config['folder'])

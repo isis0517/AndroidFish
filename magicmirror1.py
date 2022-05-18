@@ -1,4 +1,3 @@
-import pygame
 import numpy as np
 import time
 import datetime
@@ -8,10 +7,10 @@ import os
 import json
 import tkinter as tk
 from tkinter import ttk
-from multiprocessing import Process, Queue, Pipe
+from multiprocessing import Process, Pipe
 from pyfirmata2 import Arduino
-
-
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+import pygame
 
 class InitWindows(tk.Frame):
     def __init__(self, cameras):
@@ -55,7 +54,7 @@ class InitWindows(tk.Frame):
         self.arport_prompt = tk.Label(self, text="Arduino port")
         self.arport_prompt.grid(column=0, row=row_num, sticky="W")
         self.arport_entry = tk.Entry(self, width=5)
-        self.arport_entry.insert(tk.END, Arduino.AUTODETECT)
+        self.arport_entry.insert(tk.END, str(Arduino.AUTODETECT))
         self.arport_entry.grid(column=1, row=row_num, sticky="W")
         row_num += 1
 
@@ -106,12 +105,16 @@ class PygCamera:
             img = cv2.cvtColor(np.ndarray(self.cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2BGR)
             img = cv2.resize(img, self.tank_shape, cv2.INTER_NEAREST)
             img = cv2.blur(img, (3, 3))
-            fg = np.linalg.norm(img, axis=2) > self.threshold
-            img = cv2.bitwise_and(img, img, mask=fg.astype(np.uint8))
+            fg = (np.linalg.norm(img, axis=2) > self.threshold).astype(np.uint8)
+            img = cv2.bitwise_and(img, img, mask=fg)
             if self.COM:
-                M = cv2.moments(img)
-                cX = int(M["m10"] / M["m00"])
-                cY = int(M["m01"] / M["m00"])
+                M = cv2.moments(fg)
+                if M["m00"] == 0:
+                    cX = 0
+                    cY = 0
+                else:
+                    cX = int(M["m10"] / M["m00"])
+                    cY = int(M["m01"] / M["m00"])
                 cv2.circle(img, (cX, cY), 5, (255, 255, 255), -1)
             self.scenes.append(img)
         else:
@@ -204,7 +207,7 @@ class Console(Process):
         stage_column = ["cam model", "show", "lag", "center of mass", "threshold"]
         stage_col_labels = []
         for col_num, text in enumerate(stage_column):
-            stage_col_labels.append(tk.Label(stage_frame, text=text, width=10, anchor='center'))
+            stage_col_labels.append(tk.Label(stage_frame, text=text, width=12, anchor='center'))
             stage_col_labels[-1].grid(column=col_num, row=1)
 
         row_num = 2
@@ -354,7 +357,7 @@ class Console(Process):
                 child.configure(state='normal')
             config['record'] = False
             setting()
-        stop_but = tk.Button(window, text="STOP", heigh=1, width=6, font=('Arial Bold', 14), command=stop)
+        stop_but = tk.Button(window, text="STOP record", heigh=1, width=6, font=('Arial Bold', 14), command=stop)
         stop_but.pack(anchor="n")
 
         def update():
@@ -481,6 +484,8 @@ if __name__ == "__main__":
     PORT = init_window.port
 
     # loading arduino
+    if PORT == "None":
+        PORT = None
     board = Arduino(PORT)
 
     # pygame config

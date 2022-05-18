@@ -70,10 +70,10 @@ def camConfig(camera, **kwargs):
 if __name__ == "__main__":
     ## this line enable the camera emulater
     # os.environ["PYLON_CAMEMU"] = "1"
-    if not os.path.exists("mmconfig.json"):
-        with open("mmconfig.json", 'w'):
+    if not os.path.exists("../mmconfig.json"):
+        with open("../mmconfig.json", 'w'):
             pass
-    with open('mmconfig.json', 'r') as f:
+    with open('../mmconfig.json', 'r') as f:
         kwargs = json.load(f)
 
     # parameter

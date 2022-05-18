@@ -196,7 +196,7 @@ class ConfigWindow(tk.Frame):
         self.debug_camera_combo.grid(column=1, row=0)
 
         self.schedule_frame = ttk.Frame(self.root, borderwidth=2, relief='solid')
-        self.schedule_frame.pack(side=tk.Button)
+        self.schedule_frame.pack(side=tk.BOTTOM)
 
         self.schedule_title = tk.Label(self.schedule_frame, text="Schedule", font=('Arial', 12))
         self.schedule_title.grid(column=0, row=0, columnspan=5)
@@ -332,7 +332,7 @@ class ConfigWindow(tk.Frame):
         if c_num >= 0 and not self.stage_show_vars[c_num].get() == 1:
             c_num = -1
         self.config["debug_cam"] = c_num
-        self.stage_setting()
+        self.send_config()
 
     def update(self):
         if self.conn_recv.poll():

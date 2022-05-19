@@ -62,8 +62,7 @@ class PygCamera:
         center = self.rect.center
         self.rect.center = (center[0]+dis[0], center[1]+dis[1])
 
-    @staticmethod
-    def camConfig(camera: pylon.InstantCamera):
+    def camConfig(self, camera: pylon.InstantCamera):
         if camera.GetDeviceInfo().GetModelName() == "Emulation":
             camera.Open()
             grabResult = camera.GrabOne(6000)
@@ -96,6 +95,7 @@ class PygCamera:
         else:
             print("grab Failed")
             raise Exception('grab failed')
+        camera.AcquisitionFrameRateEnable.SetValue(False)
         camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
 
         return (shape, dtype)

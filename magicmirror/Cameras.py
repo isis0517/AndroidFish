@@ -127,13 +127,17 @@ class RecCamera(Process):
 
     def run(self):
 
+        print(self.camera_model, 0)
         T1 = pylon.TlFactory.GetInstance()
+        print(self.camera_model, 1)
         lstDevices = T1.EnumerateDevices()
         num = 0
+        print(self.camera_model, 2)
         for s, cam_info in enumerate(lstDevices):
             camera = pylon.InstantCamera(T1.CreateFirstDevice(cam_info))
             if self.camera_model == camera.GetDeviceInfo().GetModelName():
                 num = s
+        print(self.camera_model, 3)
         camera = pylon.InstantCamera(T1.CreateFirstDevice(lstDevices[num]))
 
         camera.Open()
@@ -142,9 +146,9 @@ class RecCamera(Process):
         camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
 
         path = self.path
-        if os.path.exists(path):
+        if os.path.isdir(path):
             s = 0
-            while os.path.exists(path+f"{s}"):
+            while os.path.isdir(path+f"{s}"):
                 s+=1
             path = path+f"{s}"
         os.mkdir(path)

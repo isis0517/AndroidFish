@@ -277,6 +277,7 @@ class ConfigWindow(tk.Frame):
             child.configure(state='normal')
         for child in self.exp_frame.winfo_children():
             child.configure(state='normal')
+        self.schedule_state["num"] = 0
         self.schedule_remove_but.configure(state="normal")
         self.schedule_go_but.configure(state="normal")
         self.schedule_stop_but.configure(state="disable")
@@ -455,16 +456,20 @@ class ConfigWindow(tk.Frame):
 
     def debug_combf_select(self, event):
         c_num = self.debug_camera_combo.current() - 1
-        if c_num >= 0 and not self.stage_show_vars[c_num].get() == 1:
+        if c_num >= 0 and not self.config[c_num]["show"] == 1:
             c_num = -1
+            return
         self.config["debug_cam"] = c_num
-        self.stage_setting()
+        cv2.namedWindow(self.init_cams[self.config['debug_cam']],)
+        self.send_config()
 
     def update(self):
         if self.conn_recv.poll():
             img = self.conn_recv.recv()
             cv2.imshow(self.init_cams[self.config['debug_cam']], img)
             cv2.waitKey(1)
+        elif self.config["debug_cam"] < 0:
+            cv2.destroyAllWindows()
         delta = 0
         if self.start:
             delta = int(time.time()) - self.start
@@ -477,7 +482,8 @@ class ConfigWindow(tk.Frame):
         self.config["is_running"] = False
         self.send_config()
         time.sleep(1)
-        _ = self.conn_recv.recv()
+        while self.conn_recv.poll():
+            _ = self.conn_recv.recv()
         self.root.destroy()
 
 

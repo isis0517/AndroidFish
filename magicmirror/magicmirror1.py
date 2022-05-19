@@ -93,7 +93,8 @@ if __name__ == "__main__":
     setDisplace = lambda x: None
 
     # rec config
-    if not rec_cams is None:
+    if rec_cams is not None:
+        print("record", rec_cams)
         recorder = RecCamera(rec_cams)
 
     # loop start
@@ -204,4 +205,4 @@ if __name__ == "__main__":
     pygame.quit()
     for cam in pyg_cameras:
         cam.camera.Close()
-    console.terminate()
+    console.join()

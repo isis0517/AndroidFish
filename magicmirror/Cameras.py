@@ -101,14 +101,22 @@ class PygCamera:
         return (shape, dtype)
 
 
-class RecCamera(Process):
-    def __init__(self, camera, fps=30):
+class RecCamera():
+    def __init__(self, camera, fps):
         super().__init__()
-        self.camera_model = camera.GetDeviceInfo().GetModelName()
+        self.camera = camera
         self.path = ""
         self.duration = 10
         self.fps = fps
         self.config = {"fps": fps}
+        self.camera.Open()
+        self.camera.AcquisitionFrameRateEnable.SetValue(True)
+        self.camera.AcquisitionFrameRate.SetValue(self.fps)
+        self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+        self.frame_num = 0
+        self.is_record = False
+        self.maxcount = self.duration*self.fps
+
 
     def setFolder(self, path):
         if os.path.exists(path):
@@ -117,6 +125,7 @@ class RecCamera(Process):
                 s+=1
             path = path+f"{s}"
         self.path = path
+        self.frame_num = 0
 
     def setDuration(self, duration):
         self.duration = duration
@@ -125,25 +134,16 @@ class RecCamera(Process):
         for key, value in config.items():
             self.config[key] = value
 
-    def run(self):
+    def update(self):
+        if self.is_record and self.maxcount>self.frame_num:
+            grabResult = self.camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
+            if grabResult.GrabSucceeded():
+                np.save(os.path.join(self.path, f"{self.frame_num}.npy"), grabResult.GetArray())
+                self.frame_num += 1
+        else:
+            pass
 
-        print(self.camera_model, 0)
-        T1 = pylon.TlFactory.GetInstance()
-        print(self.camera_model, 1)
-        lstDevices = T1.EnumerateDevices()
-        num = 0
-        print(self.camera_model, 2)
-        for s, cam_info in enumerate(lstDevices):
-            camera = pylon.InstantCamera(T1.CreateFirstDevice(cam_info))
-            if self.camera_model == camera.GetDeviceInfo().GetModelName():
-                num = s
-        print(self.camera_model, 3)
-        camera = pylon.InstantCamera(T1.CreateFirstDevice(lstDevices[num]))
-
-        camera.Open()
-        camera.AcquisitionFrameRateEnable.SetValue(True)
-        camera.AcquisitionFrameRate.SetValue(self.fps)
-        camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+    def startRecord(self):
 
         path = self.path
         if os.path.isdir(path):
@@ -152,16 +152,19 @@ class RecCamera(Process):
                 s+=1
             path = path+f"{s}"
         os.mkdir(path)
+        self.path = path
 
         with open(os.path.join(path, "config"), 'w') as file:
             json.dump(self.config, file)
 
-        for s in range(self.duration*self.fps):
-            grabResult = camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
-            if grabResult.GrabSucceeded():
-                np.save(os.path.join(path, f"{s}.npy"), grabResult.GetArray())
-        camera.Close()
+        self.frame_num = 0
+        self.maxcount = self.duration*self.fps
+        self.is_record = True
 
+    def stopRecord(self):
+        self.is_record = False
+        self.frame_num = 0
+        self.maxcount = 0
 
 def getCams():
     try:

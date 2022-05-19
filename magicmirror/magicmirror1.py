@@ -1,3 +1,5 @@
+import os.path
+
 import numpy as np
 import datetime
 from pypylon import pylon
@@ -85,6 +87,7 @@ if __name__ == "__main__":
     # loop init
     is_running = True
     is_display = True
+    able_record = False
     send_cam = -1
 
     # rect config
@@ -94,8 +97,8 @@ if __name__ == "__main__":
 
     # rec config
     if rec_cams is not None:
-        print("record", rec_cams)
-        recorder = RecCamera(rec_cams)
+        recorder = RecCamera(rec_cams, pgFps)
+        able_record = True
 
     # loop start
     while is_running and console.is_alive():
@@ -145,20 +148,15 @@ if __name__ == "__main__":
             else:
                 board.digital[12].write(0)
 
-            if 'record' in config.keys() and rec_cams:
+            if 'record' in config.keys() and able_record:
                 if config['record']:
-                    if not recorder.is_alive():
-                        savepath = os.path.join(workpath, config['folder'])
-                        recorder.setFolder(savepath)
-                        recorder.setDuration(config['duration'])
-                        recorder.start()
-                elif recorder.is_alive():
-                    recorder.terminate()
-                    del recorder
-                    recorder = RecCamera(rec_cams)
+                    is_record = True
+                    recorder.setDuration(config['duration'])
+                    recorder.setConfig(config)
+                    recorder.setFolder(os.path.join(workpath, config['folder']))
+                    recorder.startRecord()
                 else:
-                    del recorder
-                    recorder = RecCamera(rec_cams)
+                    recorder.stopRecord()
 
             send_cam = config["debug_cam"]
 
@@ -174,6 +172,8 @@ if __name__ == "__main__":
             m_pos = c_pos
 
         # update the screen
+        if able_record:
+            recorder.update()
         for obj in show_cameras:
             obj.grabCam()
 
@@ -205,4 +205,6 @@ if __name__ == "__main__":
     pygame.quit()
     for cam in pyg_cameras:
         cam.camera.Close()
-    console.join()
+    if console.is_alive():
+        console.terminate()
+

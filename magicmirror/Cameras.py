@@ -141,6 +141,7 @@ class RecCamera():
                 np.save(os.path.join(self.path, f"{self.frame_num}.npy"), grabResult.GetArray())
                 self.frame_num += 1
         else:
+            self.is_record = False
             pass
 
     def startRecord(self):
@@ -162,6 +163,8 @@ class RecCamera():
         self.is_record = True
 
     def stopRecord(self):
+        if self.is_record:
+            print("be stopped, ", self.frame_num)
         self.is_record = False
         self.frame_num = 0
         self.maxcount = 0

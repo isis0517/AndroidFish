@@ -89,6 +89,7 @@ if __name__ == "__main__":
     is_display = True
     able_record = False
     send_cam = -1
+    frame_num = 0
 
     # rect config
     tank_sel = False
@@ -150,12 +151,13 @@ if __name__ == "__main__":
 
             if 'record' in config.keys() and able_record:
                 if config['record']:
-                    is_record = True
+                    frame_num = 1
                     recorder.setDuration(config['duration'])
                     recorder.setConfig(config)
                     recorder.setFolder(os.path.join(workpath, config['folder']))
                     recorder.startRecord()
                 else:
+                    frame_num = 0
                     recorder.stopRecord()
 
             send_cam = config["debug_cam"]
@@ -174,6 +176,11 @@ if __name__ == "__main__":
         # update the screen
         if able_record:
             recorder.update()
+
+        if frame_num > 0:
+            print(frame_num, pgClock.get_time(), "ms")
+            frame_num += 1
+
         for obj in show_cameras:
             obj.grabCam()
 
@@ -190,7 +197,7 @@ if __name__ == "__main__":
 
         pygame.display.update(rects)
 
-        pgClock.tick(pgFps)
+        pgClock.tick()
         crack += 1
 
         if pgClock.get_time() > 1200 / (pgFps):

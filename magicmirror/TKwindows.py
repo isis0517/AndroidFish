@@ -281,6 +281,8 @@ class ConfigWindow(tk.Frame):
         self.schedule_remove_but.configure(state="normal")
         self.schedule_go_but.configure(state="normal")
         self.schedule_stop_but.configure(state="disable")
+        self.config['record'] = False
+        self.send_config()
 
     def send_config(self):
         self.conn_send.send(self.config)
@@ -395,6 +397,7 @@ class ConfigWindow(tk.Frame):
         self.start = int(time.time())
         row_num = 2
         sec = 0
+        self.schedule_event_lst = []
         for num, sch_config in enumerate(self.schedule_config_lst):
             sec = self.execute_config(sch_config, sec)
             label = tk.Label(self.schedule_frame, text=num)
@@ -423,6 +426,7 @@ class ConfigWindow(tk.Frame):
         self.start = 0
         for event in self.schedule_event_lst:
             self.root.after_cancel(event)
+        self.schedule_event_lst = []
         self.end_schedule()
 
     def schedule_butf_remove(self):

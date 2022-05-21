@@ -101,6 +101,10 @@ if __name__ == "__main__":
 
     # loop start
     while is_running and console.is_alive():
+
+        if able_record:
+            recorder.update()
+
         # the rects will be updated, it is the key point to take fps stable
         rects = []
 
@@ -184,8 +188,6 @@ if __name__ == "__main__":
         if not is_display:
             rects.append(screen.fill([0, 0, 0]))
 
-        if able_record:
-            recorder.update()
         pygame.display.update(rects)
 
         pgClock.tick()

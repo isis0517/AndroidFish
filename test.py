@@ -432,21 +432,86 @@ class Console(Process):
 
 
 if __name__ == "__main__":
+    os.environ["PYLON_CAMEMU"] = "3"
+    maxCamerasToUse = 2
+    countOfImagesToGrab = 200
+    try:
+        # Get the transport layer factory.
+        tlFactory = pylon.TlFactory.GetInstance()
 
-    cam = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
-    # cam.Open()
-    lst = pylon.TlFactory.GetInstance().EnumerateDevices()
+        # Get all attached devices and exit application if no device is found.
+        devices = tlFactory.EnumerateDevices()
+        if len(devices) == 0:
+            raise pylon.RuntimeException("No camera present.")
 
-    console = Console([1,2,3])
-    console.start()
+        # Create an array of instant cameras for the found devices and avoid exceeding a maximum number of devices.
+        cameras = pylon.InstantCameraArray(min(len(devices), maxCamerasToUse))
+
+        l = cameras.GetSize()
+        timelst = []
+
+        # Create and attach all Pylon Devices.
+        for i, cam in enumerate(cameras):
+
+            # Print the model name of the camera.
+            cam.Attach(tlFactory.CreateDevice(devices[i]))
+            print("Using device ", cam.GetDeviceInfo().GetModelName())
+
+            if "E" not in cam.GetDeviceInfo().GetModelName():
+                cam.Open()
+                cam.AcquisitionFrameRate.SetValue(10)
+                cam.AcquisitionFrameRateEnable.SetValue(True)
+                cam.Close()
+
+            timelst.append([])
+
+
+        # Starts grabbing for all cameras starting with index 0. The grabbing
+        # is started for one camera after the other. That's why the images of all
+        # cameras are not taken at the same time.
+        # However, a hardware trigger setup can be used to cause all cameras to grab images synchronously.
+        # According to their default configuration, the cameras are
+        # set up for free-running continuous acquisition.
+        cameras.StartGrabbing()
+        n0 = time.time()
+        start = time.time()
+
+        # Grab c_countOfImagesToGrab from the cameras.
+        for i in range(countOfImagesToGrab):
+            if not cameras.IsGrabbing():
+                break
+
+            grabResult = cameras.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
+
+            # When the cameras in the array are created the camera context value
+            # is set to the index of the camera in the array.
+            # The camera context is a user settable value.
+            # This value is attached to each grab result and can be used
+            # to determine the camera that produced the grab result.
+            cameraContextValue = grabResult.GetCameraContext()
+            now = time.time()
+
+            # Print the index and the model name of the camera.
+            # print(f"Camera", cameraContextValue, f"{now-start:.3f}",
+            #       ": ", cameras[cameraContextValue].GetDeviceInfo().GetModelName())
+            start = now
+            timelst[cameraContextValue].append(now)
+
+            # Now, the image data can be processed.
+            # print("GrabSucceeded: ", grabResult.GrabSucceeded())
+            # print("SizeX: ", grabResult.GetWidth())
+            # print("SizeY: ", grabResult.GetHeight())
+            #img = grabResult.GetArray()
+            # print("Gray value of first pixel: ", img[0, 0])
+    except:
+        pass
+    #console = Console([1,2,3])
+    #console.start()
+    for t in timelst[0]:
+        print(f"{t-n0:.3f} ", end=" ||")
     time.sleep(1)
 
-    cam.Open()
-    while console.is_alive():
-        if console.poll():
-            print(console.getConfig())
     exit()
-
     conn_rev, conn_sed = Pipe(False)
     sett_get, sett_put = Pipe(False)
     console = Process(target=show_console, args=(conn_rev, sett_put))

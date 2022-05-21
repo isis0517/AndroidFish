@@ -6,6 +6,7 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 from multiprocessing import Pool
 import json
+from functools import partial
 
 class PygCamera:
     def __init__(self, camera: pylon.InstantCamera, sc_shape, tank_size=np.array([1300, 400])):
@@ -104,19 +105,33 @@ class PygCamera:
 class RecCamera():
     def __init__(self, camera, fps):
         super().__init__()
-        self.camera = camera
         self.path = ""
         self.duration = 10
         self.fps = fps
         self.config = {"fps": fps}
-        self.camera.Open()
-        self.camera.AcquisitionFrameRateEnable.SetValue(True)
-        self.camera.AcquisitionFrameRate.SetValue(self.fps)
-        self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
         self.frame_num = 0
         self.is_record = False
         self.maxcount = self.duration*self.fps
         self.pool = Pool()
+        self.camera = camera
+        self.camera.Open()
+        grabResult = self.camera.GrabOne(1000)
+        if grabResult.GrabSucceeded():
+            pt = grabResult.GetPixelType()
+            if pylon.IsPacked(pt):
+                _, new_pt = grabResult._Unpack10or12BitPacked()
+                shape, dtype, pixelformat = grabResult.GetImageFormat(new_pt)
+            else:
+                shape, dtype, pixelformat = grabResult.GetImageFormat(pt)
+                _ = grabResult.GetImageBuffer()
+        else:
+            print("grab Failed")
+            raise Exception('grab failed')
+        self.camera.AcquisitionFrameRateEnable.SetValue(True)
+        self.camera.AcquisitionFrameRate.SetValue(self.fps)
+        self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+
+        self.savenpy = partial(savenpy, **{"shape": shape, "dtype": dtype})
 
 
     def setFolder(self, path):
@@ -139,7 +154,7 @@ class RecCamera():
         grabResult = self.camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
         if self.is_record and self.maxcount > self.frame_num:
             if grabResult.GrabSucceeded():
-                self.pool.apply_async(np.save, args=(os.path.join(self.path, f"{self.frame_num}.npy"), grabResult.GetArray()))
+                self.pool.apply_async(savenpy, args=(os.path.join(self.path, f"{self.frame_num}.npy"), grabResult))
                 self.frame_num += 1
         elif self.is_record:
             self.is_record = False
@@ -190,5 +205,6 @@ def getCams():
         raise Exception("camera init failed")
     return cameras
 
-def savenpy(filename, grabResult):
-    np.save(filename, grabResult.GetArray())
+def savenpy(filename, buf, shape=[], dtype=''):
+
+    np.save(filename, np.ndarray(shape, dtype=dtype, buffer=buf))

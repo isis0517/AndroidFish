@@ -35,8 +35,7 @@ class Logger:
 if __name__ == "__main__":
 
     ## this line enable the camera emulater
-    os.environ["PYLON_CAMEMU"] = "1"
-
+    # os.environ["PYLON_CAMEMU"] = "1"
     # parameter
     bk_color = [200, 200, 200]  # RGB
 
@@ -88,6 +87,7 @@ if __name__ == "__main__":
     is_display = True
     able_record = False
     send_cam = -1
+    counter = 0
 
     # rect config
     tank_sel = False
@@ -101,9 +101,6 @@ if __name__ == "__main__":
 
     # loop start
     while is_running and console.is_alive():
-
-        if able_record:
-            recorder.update()
 
         # the rects will be updated, it is the key point to take fps stable
         rects = []
@@ -190,8 +187,14 @@ if __name__ == "__main__":
 
         pygame.display.update(rects)
 
+        if able_record:
+            recorder.update()
+
+        counter += 1
         pgClock.tick()
-        print(pgClock.get_time())
+        if counter == 30:
+            print(pgClock.get_fps())
+            counter = 0
 
     pygame.quit()
     for cam in pyg_cameras:

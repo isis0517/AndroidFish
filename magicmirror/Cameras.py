@@ -97,8 +97,10 @@ class PygCamera:
             print("grab Failed")
             raise Exception('grab failed')
         camera.Open()
-        camera.AcquisitionFrameRateEnable.SetValue(False)
-        camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+        camera.AcquisitionFrameRateEnable.SetValue(True)
+        camera.AcquisitionFrameRate.SetValue(60)
+        camera.StartGrabbing(pylon.GrabStrategy_LatestImages)
+        camera.OutputQueueSize = 1
 
         return (shape, dtype)
 
@@ -133,7 +135,8 @@ class RecCamera():
             raise Exception('grab failed')
         self.camera.AcquisitionFrameRateEnable.SetValue(True)
         self.camera.AcquisitionFrameRate.SetValue(self.fps)
-        self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+        self.camera.StartGrabbing(pylon.GrabStrategy_LatestImages)
+        self.camera.OutputQueueSize = 1
         self.shape = shape
         self.dtype = dtype
 

@@ -136,7 +136,7 @@ def Test2():
     except FileExistsError as e:
         print("already exists")
 
-    os.environ["PYLON_CAMEMU"] = "2"
+    # os.environ["PYLON_CAMEMU"] = "2"
     try:
         T1 = pylon.TlFactory.GetInstance()
         lstDevices = T1.EnumerateDevices()
@@ -432,9 +432,9 @@ class Console(Process):
 
 
 if __name__ == "__main__":
-    os.environ["PYLON_CAMEMU"] = "3"
-    maxCamerasToUse = 2
-    countOfImagesToGrab = 200
+    # os.environ["PYLON_CAMEMU"] = "3"
+    maxCamerasToUse = 3
+    countOfImagesToGrab = 3000
     try:
         # Get the transport layer factory.
         tlFactory = pylon.TlFactory.GetInstance()
@@ -446,6 +446,7 @@ if __name__ == "__main__":
 
         # Create an array of instant cameras for the found devices and avoid exceeding a maximum number of devices.
         cameras = pylon.InstantCameraArray(min(len(devices), maxCamerasToUse))
+        used = [cameras[0], cameras[2]]
 
         l = cameras.GetSize()
         timelst = []
@@ -459,7 +460,7 @@ if __name__ == "__main__":
 
             if "E" not in cam.GetDeviceInfo().GetModelName():
                 cam.Open()
-                cam.AcquisitionFrameRate.SetValue(10)
+                cam.AcquisitionFrameRate.SetValue(40)
                 cam.AcquisitionFrameRateEnable.SetValue(True)
                 cam.Close()
 
@@ -472,7 +473,8 @@ if __name__ == "__main__":
         # However, a hardware trigger setup can be used to cause all cameras to grab images synchronously.
         # According to their default configuration, the cameras are
         # set up for free-running continuous acquisition.
-        cameras.StartGrabbing()
+        cameras.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+        time.sleep(1)
         n0 = time.time()
         start = time.time()
 
@@ -501,14 +503,16 @@ if __name__ == "__main__":
             # print("GrabSucceeded: ", grabResult.GrabSucceeded())
             # print("SizeX: ", grabResult.GetWidth())
             # print("SizeY: ", grabResult.GetHeight())
-            #img = grabResult.GetArray()
+            img = grabResult.GetBuffer()
             # print("Gray value of first pixel: ", img[0, 0])
     except:
         pass
     #console = Console([1,2,3])
     #console.start()
     for t in timelst[0]:
-        print(f"{t-n0:.3f} ", end=" ||")
+        print(f"{t-n0:.4f} ")
+        n0 = t
+    print(len(timelst[0]), len(timelst[1]), len(timelst[2]))
     time.sleep(1)
 
     exit()

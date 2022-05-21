@@ -29,8 +29,6 @@ class PygCamera:
         self.scenes = [np.zeros(np.append(self.tank_shape, [3]), dtype=np.uint8)] * count
 
     def grabCam(self):
-        self.camera.WaitForFrameTriggerReady(200, pylon.TimeoutHandling_ThrowException)
-        self.camera.ExecuteSoftwareTrigger()
         grabResult = self.camera.RetrieveResult(1000, pylon.TimeoutHandling_ThrowException)
 
         if grabResult.GrabSucceeded():
@@ -98,9 +96,6 @@ class PygCamera:
         else:
             print("grab Failed")
             raise Exception('grab failed')
-        camera.Close()
-        camera.RegisterConfiguration(pylon.SoftwareTriggerConfiguration(), pylon.RegistrationMode_ReplaceAll,
-                                     pylon.Cleanup_Delete)
         camera.Open()
         camera.AcquisitionFrameRateEnable.SetValue(False)
         camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
@@ -109,8 +104,6 @@ class PygCamera:
 
     def close(self):
         self.camera.Close()
-        self.camera.RegisterConfiguration(pylon.AcquireContinuousConfiguration(), pylon.RegistrationMode_ReplaceAll,
-                                     pylon.Cleanup_Delete)
 
 
 class RecCamera():

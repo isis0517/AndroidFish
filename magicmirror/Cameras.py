@@ -135,8 +135,8 @@ class RecCamera():
             self.config[key] = value
 
     def update(self):
+        grabResult = self.camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
         if self.is_record and self.maxcount>self.frame_num:
-            grabResult = self.camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
             if grabResult.GrabSucceeded():
                 np.save(os.path.join(self.path, f"{self.frame_num}.npy"), grabResult.GetArray())
                 self.frame_num += 1

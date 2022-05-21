@@ -170,9 +170,6 @@ if __name__ == "__main__":
             m_pos = c_pos
 
         # update the screen
-        if able_record:
-            recorder.update()
-
         for obj in show_cameras:
             obj.grabCam()
 
@@ -187,6 +184,8 @@ if __name__ == "__main__":
         if not is_display:
             rects.append(screen.fill([0, 0, 0]))
 
+        if able_record:
+            recorder.update()
         pygame.display.update(rects)
 
         pgClock.tick()

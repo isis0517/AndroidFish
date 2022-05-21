@@ -134,8 +134,8 @@ class RecCamera():
         self.camera.AcquisitionFrameRateEnable.SetValue(True)
         self.camera.AcquisitionFrameRate.SetValue(self.fps)
         self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
-
-        self.savenpy = partial(savenpy, **{"shape": shape, "dtype": dtype})
+        self.shape = shape
+        self.dtype = dtype
 
 
     def setFolder(self, path):
@@ -158,7 +158,7 @@ class RecCamera():
         grabResult = self.camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
         if self.is_record and self.maxcount > self.frame_num:
             if grabResult.GrabSucceeded():
-                self.pool.apply_async(savenpy, args=(os.path.join(self.path, f"{self.frame_num}.npy"), grabResult))
+                np.save(os.path.join(self.path, f"{self.frame_num}.npy"), np.ndarray(self.shape, dtype=self.dtype, buffer=grabResult.GetBuffer()))
                 self.frame_num += 1
         elif self.is_record:
             self.is_record = False

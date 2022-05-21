@@ -139,7 +139,7 @@ class RecCamera():
         grabResult = self.camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
         if self.is_record and self.maxcount > self.frame_num:
             if grabResult.GrabSucceeded():
-                self.pool.apply_async(savenpy, args=(os.path.join(self.path, f"{self.frame_num}.npy"), grabResult))
+                self.pool.apply_async(np.save, args=(os.path.join(self.path, f"{self.frame_num}.npy"), grabResult.GetArray()))
                 self.frame_num += 1
         elif self.is_record:
             self.is_record = False

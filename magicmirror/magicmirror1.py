@@ -190,6 +190,7 @@ if __name__ == "__main__":
         pygame.display.update(rects)
 
         pgClock.tick()
+        print(pgClock.get_time())
 
     pygame.quit()
     for cam in pyg_cameras:

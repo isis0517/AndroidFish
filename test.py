@@ -8,13 +8,29 @@ import time
 import sys, os
 import tkinter as tk
 import tkinter.ttk as ttk
+from pypylon import pylon
 from threading import Timer, Event
 # from tqdm import tqdm
 #
 # from pypylon import genicam
 # from pypylon import pylon
 #import pygame
+def getCams():
+    try:
+        T1 = pylon.TlFactory.GetInstance()
+        lstDevices = T1.EnumerateDevices()
+        if len(lstDevices) == 0:
+            print("no camera is detected")
+        cameras = []
+        for cam_info in lstDevices:
+            cameras.append(pylon.InstantCamera(T1.CreateFirstDevice(cam_info)))
 
+        print("total camera numbers : ",
+              len(lstDevices))
+    except:
+        print("init fail")
+        raise Exception("camera init failed")
+    return cameras
 def test_2can():
     # Grab_MultipleCameras.cpp
     # ============================================================================
@@ -317,6 +333,8 @@ class Console(Process):
 
     def show_console(self, conn_recv, conn_send, init_cams):
 
+        print("in")
+        getCams()
         window = tk.Tk()
         window.title('console panel')
         window.geometry('500x500')  # 這裡的乘是小x
@@ -393,8 +411,6 @@ class Console(Process):
         exp_break_entry = tk.Entry(exp_frame)
         exp_break_entry.grid(column=1, row=1)
 
-
-
         def execute():
             for child in stage_frame.winfo_children():
                 child.configure(state='disable')
@@ -414,11 +430,18 @@ class Console(Process):
         # 注意，loop因為是迴圈的意思，window.mainloop就會讓window不斷的重新整理，如果沒有mainloop,就是一個靜態的window,傳入進去的值就不會有迴圈，mainloop就相當於一個很大的while迴圈，有個while，每點選一次就會更新一次，所以我們必須要有迴圈
         # 所有的視窗檔案都必須有類似的mainloop函式，mainloop是視窗檔案的關鍵的關鍵。
 
+
 if __name__ == "__main__":
 
+    cam = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
+    # cam.Open()
+    lst = pylon.TlFactory.GetInstance().EnumerateDevices()
 
     console = Console([1,2,3])
     console.start()
+    time.sleep(1)
+
+    cam.Open()
     while console.is_alive():
         if console.poll():
             print(console.getConfig())

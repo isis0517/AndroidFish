@@ -4,7 +4,7 @@ import cv2
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
-from multiprocessing import Process
+from multiprocessing import Pool
 import json
 
 class PygCamera:
@@ -116,6 +116,7 @@ class RecCamera():
         self.frame_num = 0
         self.is_record = False
         self.maxcount = self.duration*self.fps
+        self.pool = Pool()
 
 
     def setFolder(self, path):
@@ -136,13 +137,12 @@ class RecCamera():
 
     def update(self):
         grabResult = self.camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
-        if self.is_record and self.maxcount>self.frame_num:
+        if self.is_record and self.maxcount > self.frame_num:
             if grabResult.GrabSucceeded():
-                np.save(os.path.join(self.path, f"{self.frame_num}.npy"), grabResult.GetArray())
+                self.pool.apply_async(savenpy, args=(os.path.join(self.path, f"{self.frame_num}.npy"), grabResult))
                 self.frame_num += 1
-        else:
+        elif self.is_record:
             self.is_record = False
-            pass
 
     def startRecord(self):
 
@@ -169,6 +169,10 @@ class RecCamera():
         self.frame_num = 0
         self.maxcount = 0
 
+    def __del__(self):
+        self.camera.Close()
+        self.pool.close()
+
 def getCams():
     try:
         T1 = pylon.TlFactory.GetInstance()
@@ -185,3 +189,6 @@ def getCams():
         print("init fail")
         raise Exception("camera init failed")
     return cameras
+
+def savenpy(filename, grabResult):
+    np.save(filename, grabResult.GetArray())

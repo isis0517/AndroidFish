@@ -7,6 +7,7 @@ import pygame
 from multiprocessing import Pool
 import json
 from functools import partial
+from collections import deque
 
 class PygCamera:
     def __init__(self, camera: pylon.InstantCamera, sc_shape, tank_size=np.array([1300, 400])):
@@ -18,15 +19,16 @@ class PygCamera:
         self.rect = pygame.Rect((0, 0), tuple(self.tank_shape))
         self.rect.center = tuple(sc_shape // 2)
         self.delaycount = 0
-        self.scenes = []
+        self.scenes = deque()
         self.threshold = 40
         self.COM = False
+        self.pos = (0, 0)
 
     def setDelayCount(self, count):
         if self.delaycount == count:
             return
         self.delaycount = count
-        self.scenes = [np.zeros(np.append(self.tank_shape, [3]), dtype=np.uint8)] * count
+        self.scenes = deque([self.scenes.pop()]+[np.zeros(np.append(self.tank_shape, [3]), dtype=np.uint8)]*count)
 
     def grabCam(self):
         grabResult = self.camera.RetrieveResult(1000, pylon.TimeoutHandling_ThrowException)
@@ -47,12 +49,13 @@ class PygCamera:
                     cX = int(M["m10"] / M["m00"])
                     cY = int(M["m01"] / M["m00"])
                 cv2.circle(img, (cX, cY), 5, (255, 255, 255), -1)
+                self.pos = (cX, cY)
             self.scenes.append(img)
         else:
             raise Exception("camera grab failed")
 
     def getFrame(self) -> pygame.Surface:
-        img = self.scenes.pop(0)
+        img = self.scenes.pop()
         return pygame.image.frombuffer(img.tobytes(), self.tank_shape, 'RGB')
 
     def update(self) -> pygame.Surface:
@@ -100,7 +103,7 @@ class PygCamera:
         camera.AcquisitionFrameRateEnable.SetValue(True)
         camera.AcquisitionFrameRate.SetValue(60)
         camera.StartGrabbing(pylon.GrabStrategy_LatestImages)
-        camera.OutputQueueSize = 1
+        camera.OutputQueueSize = 2
 
         return (shape, dtype)
 
@@ -112,13 +115,14 @@ class RecCamera():
     def __init__(self, camera, fps):
         super().__init__()
         self.path = ""
-        self.duration = 10
-        self.fps = fps
         self.config = {"fps": fps}
+        self.fps = fps
+        self.duration = 10
         self.frame_num = 0
-        self.is_record = False
         self.maxcount = self.duration*self.fps
-        self.pool = Pool()
+        self.is_record = False
+        self.poses = []
+
         self.camera = camera
         self.camera.Open()
         grabResult = self.camera.GrabOne(1000)
@@ -139,6 +143,7 @@ class RecCamera():
         self.camera.OutputQueueSize = 1
         self.shape = shape
         self.dtype = dtype
+        self.pool = Pool()
 
 
     def setFolder(self, path):
@@ -157,12 +162,16 @@ class RecCamera():
         for key, value in config.items():
             self.config[key] = value
 
-    def update(self):
+    def update(self, poses=None):
         grabResult = self.camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
         if self.is_record and self.maxcount > self.frame_num:
             if grabResult.GrabSucceeded():
-                np.save(os.path.join(self.path, f"{self.frame_num}.npy"), np.ndarray(self.shape, dtype=self.dtype, buffer=grabResult.GetBuffer()))
+                self.pool.apply_async(np.save, args=(os.path.join(self.path, f"{self.frame_num}.npy"),
+                                                np.ndarray(self.shape, dtype=self.dtype, buffer=grabResult.GetBuffer())))
                 self.frame_num += 1
+
+            else:
+                raise Exception("grab Failed")
         elif self.is_record:
             self.is_record = False
 
@@ -171,7 +180,7 @@ class RecCamera():
         path = self.path
         if os.path.isdir(path):
             s = 0
-            while os.path.isdir(path+f"{s}"):
+            while os.path.isdir(path+f"({s})"):
                 s+=1
             path = path+f"{s}"
         os.mkdir(path)
@@ -183,6 +192,7 @@ class RecCamera():
         self.frame_num = 0
         self.maxcount = self.duration*self.fps
         self.is_record = True
+        self.poses = []
 
     def stopRecord(self):
         if self.is_record:

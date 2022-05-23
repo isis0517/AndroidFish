@@ -17,7 +17,7 @@ class PygCamera:
         self.camera = camera
         self.tank_shape = tuple((self.shape * min(tank_size / self.shape)).astype(int))
         self.rect = pygame.Rect((0, 0), tuple(self.tank_shape))
-        self.rect.center = tuple(sc_shape // 2)
+        self.rect.center = (sc_shape[0] - self.tank_shape[0]//2, sc_shape[1] - self.tank_shape[1]//2)
         self.delaycount = 0
         self.scenes = deque()
         self.threshold = 40
@@ -40,7 +40,7 @@ class PygCamera:
             img = cv2.cvtColor(np.ndarray(self.cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2BGR)
             img = cv2.resize(img, self.tank_shape, cv2.INTER_LINEAR)
             img = cv2.blur(img, (3, 3))
-            fg = (np.linalg.norm(img, axis=2) > self.threshold).astype(np.uint8)
+            fg = (np.max(img, axis=2) > self.threshold).astype(np.uint8)
             img = cv2.bitwise_and(img, img, mask=fg)
             if self.COM:
                 M = cv2.moments(fg)
@@ -142,7 +142,7 @@ class RecCamera():
         self.camera.AcquisitionFrameRateEnable.SetValue(True)
         self.camera.AcquisitionFrameRate.SetValue(self.fps)
         self.camera.StartGrabbing(pylon.GrabStrategy_LatestImages)
-        self.camera.OutputQueueSize = 1
+        self.camera.OutputQueueSize = 2
         self.shape = shape
         self.dtype = dtype
         self.pool = Pool()

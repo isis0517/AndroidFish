@@ -7,6 +7,8 @@ import os
 import cv2
 from pyfirmata2 import Arduino
 from tkinter.filedialog import asksaveasfile
+import datetime
+
 class InitWindows(tk.Frame):
     def __init__(self, cameras):
         self.root = tk.Tk()
@@ -286,6 +288,7 @@ class ConfigWindow(tk.Frame):
         self.schedule_stop_but.configure(state="disable")
         self.config['record'] = False
         self.send_config()
+        self.start = 0
 
     def send_config(self):
         self.conn_send.send(self.config)
@@ -406,7 +409,7 @@ class ConfigWindow(tk.Frame):
             label = tk.Label(self.schedule_frame, text=num)
             label.grid(column=0, row=row_num)
             self.schedule_label_lst.append(label)
-            label = tk.Label(self.schedule_frame, text=sec)
+            label = tk.Label(self.schedule_frame, text=datetime.timedelta(seconds=sec))
             label.grid(column=1, row=row_num)
             self.schedule_label_lst.append(label)
             label = tk.Label(self.schedule_frame, text=sch_config['repeat'])
@@ -426,7 +429,6 @@ class ConfigWindow(tk.Frame):
         self.schedule_go_but.grid(column=4, row=row_num)
 
     def schedule_butf_stop(self):
-        self.start = 0
         for event in self.schedule_event_lst:
             self.root.after_cancel(event)
         self.schedule_event_lst = []
@@ -480,7 +482,8 @@ class ConfigWindow(tk.Frame):
         delta = 0
         if self.start:
             delta = int(time.time()) - self.start
-        self.exp_current_label['text'] = self.console_dict['state'] + f", {delta}sec pass"
+        through = datetime.timedelta(seconds=delta)
+        self.exp_current_label['text'] = self.console_dict['state'] + f", {through} pass"
         self.root.after(10, self.update)
 
 

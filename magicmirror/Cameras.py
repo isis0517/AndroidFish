@@ -34,7 +34,7 @@ class PygCamera:
         if grabResult.GrabSucceeded():
             buff = grabResult.GetBuffer()
             img = cv2.cvtColor(np.ndarray(self.cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2BGR)
-            img = cv2.resize(img, self.tank_shape, cv2.INTER_NEAREST)
+            img = cv2.resize(img, self.tank_shape, cv2.INTER_LINEAR)
             img = cv2.blur(img, (3, 3))
             fg = (np.linalg.norm(img, axis=2) > self.threshold).astype(np.uint8)
             img = cv2.bitwise_and(img, img, mask=fg)

@@ -28,7 +28,9 @@ class PygCamera:
         if self.delaycount == count:
             return
         self.delaycount = count
-        self.scenes = deque([self.scenes.pop()]+[np.zeros(np.append(self.tank_shape, [3]), dtype=np.uint8)]*count)
+        lst = [np.zeros(np.append(self.tank_shape, [3]), dtype=np.uint8)]*count
+        self.scenes.clear()
+        self.scenes.extend(lst)
 
     def grabCam(self):
         grabResult = self.camera.RetrieveResult(1000, pylon.TimeoutHandling_ThrowException)
@@ -55,7 +57,7 @@ class PygCamera:
             raise Exception("camera grab failed")
 
     def getFrame(self) -> pygame.Surface:
-        img = self.scenes.pop()
+        img = self.scenes.popleft()
         return pygame.image.frombuffer(img.tobytes(), self.tank_shape, 'RGB')
 
     def update(self) -> pygame.Surface:

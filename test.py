@@ -434,7 +434,8 @@ class Console(Process):
 if __name__ == "__main__":
     # os.environ["PYLON_CAMEMU"] = "3"
     maxCamerasToUse = 3
-    countOfImagesToGrab = 3000
+    countOfImagesToGrab = 60000
+
     try:
         # Get the transport layer factory.
         tlFactory = pylon.TlFactory.GetInstance()
@@ -460,7 +461,7 @@ if __name__ == "__main__":
 
             if "E" not in cam.GetDeviceInfo().GetModelName():
                 cam.Open()
-                cam.AcquisitionFrameRate.SetValue(40)
+                cam.AcquisitionFrameRate.SetValue(30)
                 cam.AcquisitionFrameRateEnable.SetValue(True)
                 cam.Close()
 

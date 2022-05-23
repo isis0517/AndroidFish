@@ -237,7 +237,7 @@ class ConfigWindow(tk.Frame):
         self.exp_setting()
         self.stage_setting()
         self.send_config()
-        self.root.after(1, self.update)
+        self.root.after(10, self.update)
         self.root.mainloop()
 
     def breaking(self):
@@ -481,7 +481,7 @@ class ConfigWindow(tk.Frame):
         if self.start:
             delta = int(time.time()) - self.start
         self.exp_current_label['text'] = self.console_dict['state'] + f", {delta}sec pass"
-        self.root.after(1, self.update)
+        self.root.after(10, self.update)
 
 
     def root_close(self):

@@ -166,8 +166,9 @@ class RecCamera():
         grabResult = self.camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
         if self.is_record and self.maxcount > self.frame_num:
             if grabResult.GrabSucceeded():
-                self.pool.apply_async(np.save, args=(os.path.join(self.path, f"{self.frame_num}.npy"),
-                                                np.ndarray(self.shape, dtype=self.dtype, buffer=grabResult.GetBuffer())))
+                self.pool.apply_async(savenpy, args=(os.path.join(self.path, f"{self.frame_num}.npy")
+                                                , grabResult.GetBuffer())
+                                                , kwds={"shape": self.shape, "dtype": self.dtype})
                 self.frame_num += 1
 
             else:

@@ -23,6 +23,9 @@ class PygCamera:
         self.threshold = 40
         self.COM = False
         self.pos = (0, 0)
+        self.background = self.rect.copy()
+        self.background.height = 1000
+        self.background.bottomleft = self.rect.topleft
 
     def setDelayCount(self, count):
         if self.delaycount == count:
@@ -67,6 +70,7 @@ class PygCamera:
     def setDisplace(self, dis):
         center = self.rect.center
         self.rect.center = (center[0]+dis[0], center[1]+dis[1])
+        self.background.bottomleft = self.rect.topleft
 
     def camConfig(self, camera: pylon.InstantCamera):
         if camera.GetDeviceInfo().GetModelName() == "Emulation":

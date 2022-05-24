@@ -13,7 +13,7 @@ import pygame
 
 # to do
 # 1. camera config saving
-# 2. record by outer schedule(files, including different config)
+# 2. only part of screen is lighting
 # 3. image enhance
 # 4. adding random to the path
 
@@ -66,8 +66,10 @@ if __name__ == "__main__":
     #     # pygame.HWSURFACE | pygame.DOUBLEBUF
     flags = flags | pygame.SHOWN | pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.NOFRAME  # | pygame.FULLSCREEN
     init_size = [0, 0]
+
+    # stage init
     screen = pygame.display.set_mode(init_size, display=display, flags=flags)
-    screen.fill(bk_color)
+    screen.fill([0, 0, 0])
     pygame.display.update()
     sc_shape = np.array(pygame.display.get_window_size())
 
@@ -135,6 +137,7 @@ if __name__ == "__main__":
             for s, obj in enumerate(pyg_cameras):
                 if config[s]["show"] == 1:
                     show_cameras.append(obj)
+                    rects.append(pygame.draw.rect(screen, bk_color, obj.background))
                 if config[s]["com"] == 1:
                     obj.COM = True
                 else:
@@ -159,13 +162,13 @@ if __name__ == "__main__":
 
             send_cam = config["debug_cam"]
 
-            rects.append(screen.fill(bk_color))
+            rects.append(screen.fill([0, 0, 0]))
             # update the value
 
 
         # update the pos
         if tank_sel:
-            rects.append(screen.fill(bk_color))
+            rects.append(screen.fill([0, 0, 0]))
             c_pos = pygame.mouse.get_pos()
             setDisplace((c_pos[0]-m_pos[0], c_pos[1]-m_pos[1]))
             m_pos = c_pos
@@ -181,6 +184,7 @@ if __name__ == "__main__":
             frame = obj.getFrame()
             cover = screen.blit(frame, obj.rect)
             rects.append(obj.rect)
+            rects.append(pygame.draw.rect(screen, bk_color, obj.background))
 
         if not is_display:
             rects.append(screen.fill([0, 0, 0]))

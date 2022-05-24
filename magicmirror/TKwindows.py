@@ -99,7 +99,7 @@ class ConfigWindow(tk.Frame):
         self.stage_frame = ttk.Frame(borderwidth=2, relief='solid')
         self.stage_frame.pack(anchor='center')
 
-        self.stage_title = tk.Label(self.stage_frame, text="Stage config", font=('Arial', 12), width=10, height=2, anchor='center')
+        self.stage_title = tk.Label(self.stage_frame, text="Stage config", font=('Arial', 12), width=20, height=2, anchor='center')
         self.stage_title.grid(column=0, row=0, columnspan=5)
 
         self.stage_column = ["cam model", "show", "lag", "center of mass", "threshold"]

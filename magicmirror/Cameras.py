@@ -26,6 +26,8 @@ class PygCamera:
         self.background = self.rect.copy()
         self.background.height = 1000
         self.background.bottomleft = self.rect.topleft
+        self.is_show = True
+        self.color_matrix6000K = np.array([[1.81, -0.25, 0.03], [-0.81, 1.78, -0.81], [0.03, -0.53, 1.78]])
 
     def setDelayCount(self, count):
         if self.delaycount == count:
@@ -42,7 +44,6 @@ class PygCamera:
             buff = grabResult.GetBuffer()
             img = cv2.cvtColor(np.ndarray(self.cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2BGR)
             img = cv2.resize(img, self.tank_shape, cv2.INTER_LINEAR)
-            img = cv2.blur(img, (3, 3))
             fg = (np.max(img, axis=2) > self.threshold).astype(np.uint8)
             img = cv2.bitwise_and(img, img, mask=fg)
             if self.COM:
@@ -61,7 +62,15 @@ class PygCamera:
 
     def getFrame(self) -> pygame.Surface:
         img = self.scenes.popleft()
-        return pygame.image.frombuffer(img.tobytes(), self.tank_shape, 'RGB')
+        if self.is_show:
+            return pygame.image.frombuffer(img.tobytes(), self.tank_shape, 'RGB')
+        surf = pygame.Surface(self.rect.size)
+        return surf
+
+    def getCover(self):
+        if self.is_show:
+            return self.rect.union(self.background)
+        return self.background
 
     def update(self) -> pygame.Surface:
         self.grabCam()

@@ -75,10 +75,8 @@ if __name__ == "__main__":
 
     # PygCam setting
     pyg_cameras = []
-    show_cameras = []
     for cam in use_cams:
         pyg_cameras.append(PygCamera(cam, sc_shape))
-        show_cameras.append((pyg_cameras[-1]))
 
     # console setting
     console = Console([cam.model for cam in pyg_cameras])
@@ -113,8 +111,8 @@ if __name__ == "__main__":
                 is_running = False
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                for obj in reversed(show_cameras):
-                    cover = obj.rect
+                for obj in reversed(pyg_cameras):
+                    cover = obj.getCover()
                     if cover.collidepoint(pygame.mouse.get_pos()):
                         tank_sel = True
                         setDisplace = obj.setDisplace
@@ -133,11 +131,11 @@ if __name__ == "__main__":
         if console.poll():   # if console set some values
             config = console.getConfig()
             is_running = config['is_running']
-            show_cameras = []
             for s, obj in enumerate(pyg_cameras):
                 if config[s]["show"] == 1:
-                    show_cameras.append(obj)
-                    rects.append(pygame.draw.rect(screen, bk_color, obj.background))
+                    obj.is_show = True
+                else:
+                    obj.is_show = False
                 if config[s]["com"] == 1:
                     obj.COM = True
                 else:
@@ -174,13 +172,13 @@ if __name__ == "__main__":
             m_pos = c_pos
 
         # update the screen
-        for obj in show_cameras:
+        for obj in pyg_cameras:
             obj.grabCam()
 
         if send_cam >= 0:
             console.send(pyg_cameras[send_cam].scenes[0])
 
-        for obj in show_cameras:
+        for obj in pyg_cameras:
             frame = obj.getFrame()
             cover = screen.blit(frame, obj.rect)
             rects.append(obj.rect)

@@ -6,7 +6,7 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 from multiprocessing import Pool
 import json
-from functools import partial
+import datetime
 from collections import deque
 
 class PygCamera:
@@ -203,6 +203,7 @@ class RecCamera():
         self.path = path
 
         with open(os.path.join(path, "config"), 'w') as file:
+            file.write(f"{datetime.datetime.now().strftime('%Y/%d/%m %H:%M:%S')}"+"\n")
             json.dump(self.config, file)
 
         self.frame_num = 0

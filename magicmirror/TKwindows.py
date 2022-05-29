@@ -6,7 +6,7 @@ from multiprocessing import Pipe, Process
 import os
 import cv2
 from pyfirmata2 import Arduino
-from tkinter.filedialog import asksaveasfile
+from tkinter.filedialog import asksaveasfile, askopenfilename
 import datetime
 
 class InitWindows(tk.Frame):
@@ -90,8 +90,6 @@ class ConfigWindow(tk.Frame):
         super().__init__(self.root)
 
         self.config = {"record": False, "debug_cam": -1, "is_running": True}
-        self.schedule_event_lst = []
-        self.schedule_state = {"num": 0, "repeat": 0}
         self.console_dict = {"state": "idle"}
         self.root.title('console panel')
 
@@ -204,6 +202,8 @@ class ConfigWindow(tk.Frame):
         self.schedule_config_lst = []
         self.schedule_label_lst = []
         self.schedule_state_labels = []
+        self.schedule_event_lst = []
+        self.schedule_state = {"num": 0, "repeat": 0}
 
         self.schedule_remove_comb = ttk.Combobox(self.schedule_frame, values=["None", "ALL"], width=4)
         self.schedule_remove_comb.grid(column=2, row=10)
@@ -217,6 +217,16 @@ class ConfigWindow(tk.Frame):
         self.schedule_stop_but = tk.Button(self.schedule_frame, text="STOP", heigh=1, font=('Arial Bold', 12), command=self.schedule_butf_stop)
         self.schedule_stop_but.configure(state="disable")
         self.schedule_stop_but.grid(column=0, row=10)
+
+        self.schedule_save_but = tk.Button(self.schedule_frame, text="save", heigh=1, font=('Arial Bold', 12),
+                                           command=self.schedule_butf_save)
+        self.schedule_save_but.configure(state="disable")
+        self.schedule_save_but.grid(column=3, row=11)
+
+        self.schedule_load_but = tk.Button(self.schedule_frame, text="load", heigh=1, font=('Arial Bold', 12),
+                                           command=self.schedule_butf_load)
+        self.schedule_load_but.configure(state="disable")
+        self.schedule_load_but.grid(column=4, row=11)
 
         self.exp_current_label = tk.Label(self.root)
         self.exp_current_label.pack(side='right', fill=tk.BOTH)
@@ -357,6 +367,8 @@ class ConfigWindow(tk.Frame):
         self.schedule_remove_but.grid(column=3, row=row_num, sticky="w")
         self.schedule_stop_but.grid(column=0, row=row_num)
         self.schedule_go_but.grid(column=4, row=row_num)
+        self.schedule_save_but.grid(column=3, row=row_num+1)
+        self.schedule_load_but.grid(column=2, row=row_num+1)
 
     def exp_setting(self):
         repeat = int(self.exp_repeat_entry.get())
@@ -427,6 +439,18 @@ class ConfigWindow(tk.Frame):
         self.schedule_remove_but.grid(column=3, row=row_num, sticky="w")
         self.schedule_stop_but.grid(column=0, row=row_num)
         self.schedule_go_but.grid(column=4, row=row_num)
+        self.schedule_save_but.grid(column=3, row=row_num+1)
+        self.schedule_load_but.grid(column=2, row=row_num+1)
+
+    def schedule_butf_save(self):
+        out_file = asksaveasfile(mode='w', defaultextension="txt")
+        with open(out_file, 'w') as file:
+            json.dump(self.schedule_config_lst, file)
+
+    def schedule_butf_load(self):
+        open_file = askopenfilename()
+        with open(open_file, 'r') as file:
+            self.schedule_config_lst = json.load(file)
 
     def schedule_butf_stop(self):
         for event in self.schedule_event_lst:

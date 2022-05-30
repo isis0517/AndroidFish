@@ -220,13 +220,11 @@ class ConfigWindow(tk.Frame):
 
         self.schedule_save_but = tk.Button(self.schedule_frame, text="save", heigh=1, font=('Arial Bold', 12),
                                            command=self.schedule_butf_save)
-        self.schedule_save_but.configure(state="disable")
-        self.schedule_save_but.grid(column=3, row=11)
+        self.schedule_save_but.grid(column=2, row=11)
 
         self.schedule_load_but = tk.Button(self.schedule_frame, text="load", heigh=1, font=('Arial Bold', 12),
                                            command=self.schedule_butf_load)
-        self.schedule_load_but.configure(state="disable")
-        self.schedule_load_but.grid(column=4, row=11)
+        self.schedule_load_but.grid(column=3, row=11)
 
         self.exp_current_label = tk.Label(self.root)
         self.exp_current_label.pack(side='right', fill=tk.BOTH)

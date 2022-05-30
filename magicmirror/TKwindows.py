@@ -442,8 +442,8 @@ class ConfigWindow(tk.Frame):
 
     def schedule_butf_save(self):
         out_file = asksaveasfile(mode='w', defaultextension="txt")
-        with open(out_file, 'w') as file:
-            json.dump(self.schedule_config_lst, file)
+        json.dump(self.schedule_config_lst, out_file)
+        out_file.close()
 
     def schedule_butf_load(self):
         open_file = askopenfilename()

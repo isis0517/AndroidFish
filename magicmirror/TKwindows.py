@@ -449,6 +449,7 @@ class ConfigWindow(tk.Frame):
         open_file = askopenfilename()
         with open(open_file, 'r') as file:
             self.schedule_config_lst = json.load(file)
+        self.show_schedule()
 
     def schedule_butf_stop(self):
         for event in self.schedule_event_lst:

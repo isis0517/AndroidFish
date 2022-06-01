@@ -85,7 +85,7 @@ if __name__ == "__main__":
     # loop init
     is_running = True
     is_display = True
-    is_sidesave = False
+    is_sidesave = True
     able_record = False
     send_cam = -1
     counter = 0
@@ -102,7 +102,7 @@ if __name__ == "__main__":
 
     # side save config
     if is_sidesave:
-        side_video = cv2.VideoWriter("sidevideo", cv2.CAP_FFMPEG, cv2.VideoWriter_fourcc(*"mp4v"), pgFps
+        side_video = cv2.VideoWriter("sidevideo.mp4", cv2.VideoWriter_fourcc(*"mp4v"), pgFps
                                      , pyg_cameras[0].tank_shape)
 
     # loop start
@@ -188,7 +188,7 @@ if __name__ == "__main__":
             console.send(pyg_cameras[send_cam].scenes[0])
 
         if is_sidesave:
-            side_video.write(pyg_cameras[0].scenes[0])
+            side_video.write(pyg_cameras[0].scenes[0][:, :, ::-1])
 
         for obj in pyg_cameras:
             frame = obj.getFrame()
@@ -211,6 +211,8 @@ if __name__ == "__main__":
             counter = 0
 
     pygame.quit()
+    if is_sidesave:
+        side_video.release()
     for cam in pyg_cameras:
         cam.camera.Close()
     if console.is_alive():

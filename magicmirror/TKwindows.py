@@ -498,7 +498,7 @@ class ConfigWindow(tk.Frame):
     def update(self):
         if self.conn_recv.poll():
             img = self.conn_recv.recv()
-            cv2.imshow(self.init_cams[self.config['debug_cam']], img)
+            cv2.imshow(self.init_cams[self.config['debug_cam']], img[:, :, ::-1])
             cv2.waitKey(1)
         elif self.config["debug_cam"] < 0:
             cv2.destroyAllWindows()

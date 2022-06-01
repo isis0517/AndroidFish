@@ -185,7 +185,7 @@ if __name__ == "__main__":
             obj.grabCam()
 
         if send_cam >= 0:
-            console.send(pyg_cameras[send_cam].scenes[0][:, :, ::-1])
+            console.send(pyg_cameras[send_cam].scenes[0])
 
         if is_sidesave:
             side_video.write(pyg_cameras[0].scenes[0][:, :, ::-1])

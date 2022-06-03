@@ -58,7 +58,7 @@ class PygCamera:
                 self.pos = (cX, cY)
             self.scenes.append(img)
         else:
-            raise Exception("camera grab failed")
+            raise Exception(f"{self.model} camera grab failed at time {datetime.datetime.now()}")
 
     def getFrame(self) -> pygame.Surface:
         img = self.scenes.popleft()
@@ -181,9 +181,11 @@ class RecCamera():
         grabResult = self.camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
         if self.is_record and self.maxcount > self.frame_num:
             if grabResult.GrabSucceeded():
-                self.pool.apply_async(savenpy, args=(os.path.join(self.path, f"{self.frame_num}.npy")
-                                                , grabResult.GetBuffer())
-                                                , kwds={"shape": self.shape, "dtype": self.dtype})
+                # self.pool.apply_async(savenpy, args=(os.path.join(self.path, f"{self.frame_num}.npy")
+                #                                 , grabResult.GetBuffer())
+                #                                 , kwds={"shape": self.shape, "dtype": self.dtype})
+                np.save(os.path.join(self.path, f"{self.frame_num}.npy"),
+                        np.ndarray(self.shape, dtype=self.dtype, buffer=grabResult.GetBuffer()))
                 self.frame_num += 1
 
             else:

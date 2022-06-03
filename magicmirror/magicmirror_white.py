@@ -192,7 +192,7 @@ if __name__ == "__main__":
 
         for obj in pyg_cameras:
             frame = obj.getFrame()
-            pygame.draw.rect(screen, bk_color, obj.rect)
+            pygame.draw.rect(screen, [0,0,0], obj.rect)
             rects.append(obj.rect)
             rects.append(pygame.draw.rect(screen, bk_color, obj.background))
 

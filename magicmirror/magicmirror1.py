@@ -138,6 +138,7 @@ if __name__ == "__main__":
             config = console.getConfig()
             is_running = config['is_running']
             for s, obj in enumerate(pyg_cameras):
+                config[str(s)]["model"] = obj.model
                 obj_config = config[str(s)]
                 s = str(s)
                 if obj_config["show"] == 1:

@@ -13,7 +13,7 @@ import pygame
 
 # to do
 # 1. camera config saving
-# 2. only part of screen is lighting
+# 2. camera grab failed
 # 3. image enhance
 # 4. adding random to the path
 
@@ -81,6 +81,7 @@ if __name__ == "__main__":
     # console setting
     console = Console([cam.model for cam in pyg_cameras])
     console.start()
+    console.send({"center": [obj.rect.center for obj in pyg_cameras]})
 
     # loop init
     is_running = True
@@ -125,6 +126,7 @@ if __name__ == "__main__":
             # mouse button release, no tank is select
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 tank_sel = False
+                console.send({"center": [obj.rect.center for obj in pyg_cameras]})
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_q:
@@ -136,16 +138,31 @@ if __name__ == "__main__":
             config = console.getConfig()
             is_running = config['is_running']
             for s, obj in enumerate(pyg_cameras):
-                if config[s]["show"] == 1:
+                obj_config = config[str(s)]
+                s = str(s)
+                if obj_config["show"] == 1:
                     obj.is_show = True
                 else:
                     obj.is_show = False
-                if config[s]["com"] == 1:
+                if obj_config["com"] == 1:
                     obj.COM = True
                 else:
                     obj.COM = False
-                lag = config[s]["lag"]
-                obj.threshold = config[s]["threshold"]
+                if 'center' in obj_config:
+                    try:
+                        center = obj_config['center']
+                        center = tuple(map(int, center[center.index("(")+1:center.index(")")].split(",")))
+                        if center[0] < 0 or center[1] < 0:
+                            raise Exception()
+                        if len(center) > 2:
+                            raise Exception()
+                        obj.setCenter(center)
+                    except:
+                        pass
+                    console.send({"center": [obj.rect.center for obj in pyg_cameras]})
+
+                lag = obj_config["lag"]
+                obj.threshold = obj_config["threshold"]
                 obj.setDelayCount(pgFps*lag)
             is_display = config["display"] == 1
             if config["light"] == 1:
@@ -180,7 +197,7 @@ if __name__ == "__main__":
             obj.grabCam()
 
         if send_cam >= 0:
-            console.send(pyg_cameras[send_cam].scenes[0])
+            console.send({"img": pyg_cameras[send_cam].scenes[0]})
 
         for obj in pyg_cameras:
             frame = obj.getFrame()
@@ -198,8 +215,8 @@ if __name__ == "__main__":
 
         counter += 1
         pgClock.tick()
-        if counter == 30:
-            print(pgClock.get_fps())
+        if counter == pgFps:
+            console.send({"fps": pgClock.get_fps()})
             counter = 0
 
     pygame.quit()

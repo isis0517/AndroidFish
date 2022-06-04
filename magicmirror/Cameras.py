@@ -37,6 +37,14 @@ class PygCamera:
         self.scenes.clear()
         self.scenes.extend(lst)
 
+    def setDisplace(self, dis):
+        center = self.rect.center
+        self.setCenter((center[0]+dis[0], center[1]+dis[1]))
+
+    def setCenter(self, center):
+        self.rect.center = center
+        self.background.bottomleft = self.rect.topleft
+
     def grabCam(self):
         grabResult = self.camera.RetrieveResult(1000, pylon.TimeoutHandling_ThrowException)
 
@@ -58,7 +66,9 @@ class PygCamera:
                 self.pos = (cX, cY)
             self.scenes.append(img)
         else:
-            raise Exception(f"{self.model} camera grab failed at time {datetime.datetime.now()}")
+            print(f"{self.model} camera grab failed at time {datetime.datetime.now()}")
+            img = np.ones((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)
+            self.scenes.append(img)
 
     def getFrame(self) -> pygame.Surface:
         img = self.scenes.popleft()
@@ -75,11 +85,6 @@ class PygCamera:
     def update(self) -> pygame.Surface:
         self.grabCam()
         return self.getFrame()
-
-    def setDisplace(self, dis):
-        center = self.rect.center
-        self.rect.center = (center[0]+dis[0], center[1]+dis[1])
-        self.background.bottomleft = self.rect.topleft
 
     def camConfig(self, camera: pylon.InstantCamera):
         if camera.GetDeviceInfo().GetModelName() == "Emulation":
@@ -189,7 +194,8 @@ class RecCamera():
                 self.frame_num += 1
 
             else:
-                raise Exception("grab Failed")
+                print(f"{self.model} camera grab failed at time {datetime.datetime.now()}, which mission is recording")
+
         elif self.is_record:
             self.is_record = False
 

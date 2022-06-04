@@ -1,3 +1,4 @@
+import functools
 import json
 import time
 import tkinter as tk
@@ -87,6 +88,7 @@ class ConfigWindow(tk.Frame):
         self.conn_recv = conn_recv
         self.conn_send = conn_send
         self.start = 0
+        self.fps = 0.
         super().__init__(self.root)
 
         self.config = {"record": False, "debug_cam": -1, "is_running": True}
@@ -100,7 +102,7 @@ class ConfigWindow(tk.Frame):
         self.stage_title = tk.Label(self.stage_frame, text="Stage config", font=('Arial', 12), width=20, height=2, anchor='center')
         self.stage_title.grid(column=0, row=0, columnspan=5)
 
-        self.stage_column = ["cam model", "show", "lag", "center of mass", "threshold"]
+        self.stage_column = ["cam model", "show", "lag", "center of mass", "threshold", "center"]
         self.stage_col_labels = []
         for col_num, text in enumerate(self.stage_column):
             self.stage_col_labels.append(tk.Label(self.stage_frame, text=text, width=12, anchor='center'))
@@ -112,6 +114,7 @@ class ConfigWindow(tk.Frame):
         self.stage_lag_entrys = []
         self.stage_com_vars = []
         self.stage_threshold_entrys = []
+        self.stage_center_entrys = []
         for s, cam in enumerate(self.init_cams):
             self.stage_cam_labels.append(tk.Label(self.stage_frame, text=cam, anchor='w'))
             self.stage_cam_labels[-1].grid(column=0, row=row_num)
@@ -132,6 +135,10 @@ class ConfigWindow(tk.Frame):
             self.stage_threshold_entrys.append(tk.Entry(self.stage_frame, width=4))
             self.stage_threshold_entrys[-1].grid(column=4, row=row_num)
             self.stage_threshold_entrys[-1].insert(tk.END, "30")
+
+            self.stage_center_entrys.append(tk.Entry(self.stage_frame, width=12))
+            self.stage_center_entrys[-1].grid(column=5, row=row_num)
+            self.stage_center_entrys[-1].insert(tk.END, "0, 0")
 
             row_num += 1
 
@@ -307,21 +314,34 @@ class ConfigWindow(tk.Frame):
 
     def stage_setting(self):
         for s, cam in enumerate(self.init_cams):
-            self.config[s] = {"show": self.stage_show_vars[s].get(), "lag": int(self.stage_lag_entrys[s].get())
-                , "com": self.stage_com_vars[s].get(), "threshold": int(self.stage_threshold_entrys[s].get())}
+            self.config[str(s)] = {"show": self.stage_show_vars[s].get(), "lag": int(self.stage_lag_entrys[s].get())
+                , "com": self.stage_com_vars[s].get(), "threshold": int(self.stage_threshold_entrys[s].get())
+                , "center": self.stage_center_entrys[s].get()}
         self.config["display"] = self.stage_display_var.get()
         self.config["light"] = self.stage_light_var.get()
 
     def show_stage(self, load_config=None):
         if load_config is None:
             load_config = self.config
+        is_disable = False
+        for child in self.stage_frame.winfo_children():
+            if child['state'] == tk.DISABLED:
+                is_disable = True
+            child.configure(state='normal')
         for s, cam in enumerate(self.init_cams):
-            self.stage_show_vars[s].set(load_config[s]['show'])
-            self.stage_lag_entrys[s]['text'] = load_config[s]['lag']
-            self.stage_com_vars[s].set(load_config[s]['com'])
-            self.stage_threshold_entrys[s]['text'] = load_config[s]['threshold']
+            self.stage_show_vars[s].set(load_config[str(s)]['show'])
+            self.stage_lag_entrys[s].delete(0, tk.END)
+            self.stage_lag_entrys[s].insert(tk.END, load_config[str(s)]['lag'])
+            self.stage_com_vars[s].set(load_config[str(s)]['com'])
+            self.stage_threshold_entrys[s].delete(0, tk.END)
+            self.stage_threshold_entrys[s].insert(tk.END, load_config[str(s)]['threshold'])
+            self.stage_center_entrys[s].delete(0, tk.END)
+            self.stage_center_entrys[s].insert(tk.END,  load_config[str(s)].get("center", "center_err"))
         self.stage_display_var.set(self.config["display"])
         self.stage_light_var.set(self.config["light"])
+        if is_disable:
+            for child in self.stage_frame.winfo_children():
+                child.configure(state='disable')
 
     def show_exp(self, load_config=None):
         if load_config is None:
@@ -476,15 +496,16 @@ class ConfigWindow(tk.Frame):
         temp['folder'] = foldername
         temp['duration'] = duration_sec
         for s, cam in enumerate(self.init_cams):
-            temp[s] = {"show": self.stage_show_vars[s].get(), "lag": int(self.stage_lag_entrys[s].get())
-                , "com": self.stage_com_vars[s].get(), "threshold": int(self.stage_threshold_entrys[s].get())}
+            temp[str(s)] = {"show": self.stage_show_vars[s].get(), "lag": int(self.stage_lag_entrys[s].get())
+                , "com": self.stage_com_vars[s].get(), "threshold": int(self.stage_threshold_entrys[s].get())
+                , "center": self.stage_center_entrys[s].get()}
         temp["display"] = self.stage_display_var.get()
         temp["light"] = self.stage_light_var.get()
         out_file = asksaveasfile(mode='w', defaultextension="txt")
         if out_file is None:
             return
         json.dump(temp, out_file)
-        out_file.root_close()
+        out_file.close()
 
     def debug_combf_select(self, event):
         c_num = self.debug_camera_combo.current() - 1
@@ -497,16 +518,27 @@ class ConfigWindow(tk.Frame):
 
     def update(self):
         if self.conn_recv.poll():
-            img = self.conn_recv.recv()
-            cv2.imshow(self.init_cams[self.config['debug_cam']], img[:, :, ::-1])
-            cv2.waitKey(1)
-        elif self.config["debug_cam"] < 0:
-            cv2.destroyAllWindows()
+            mesg = self.conn_recv.recv()
+            if 'img' in mesg:
+                img = mesg['img']
+                cv2.imshow(self.init_cams[self.config['debug_cam']], img[:, :, ::-1])
+                cv2.waitKey(1)
+                if self.config["debug_cam"] < 0:
+                    self.send_config()
+            elif self.config["debug_cam"] < 0:
+                cv2.destroyAllWindows()
+            if 'fps' in mesg:
+                self.fps = mesg['fps']
+            if 'center' in mesg:
+                centers = mesg['center']
+                for s, entry in enumerate(self.stage_center_entrys):
+                    self.stage_center_entrys[s].delete(0, tk.END)
+                    self.stage_center_entrys[s].insert(tk.END, centers[s].__str__())
         delta = 0
         if self.start:
             delta = int(time.time()) - self.start
         through = datetime.timedelta(seconds=delta)
-        self.exp_current_label['text'] = self.console_dict['state'] + f", {through} pass"
+        self.exp_current_label['text'] = self.console_dict['state'] + f", {through} pass ({self.fps:.2f})"
         self.root.after(10, self.update)
 
 

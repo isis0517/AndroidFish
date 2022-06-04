@@ -509,7 +509,7 @@ class ConfigWindow(tk.Frame):
 
     def debug_combf_select(self, event):
         c_num = self.debug_camera_combo.current() - 1
-        if c_num >= 0 and not self.config[c_num]["show"] == 1:
+        if c_num >= 0 and not self.config[str(c_num)]["show"] == 1:
             c_num = -1
             return
         self.config["debug_cam"] = c_num

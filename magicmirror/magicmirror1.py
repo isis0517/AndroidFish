@@ -12,8 +12,8 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 
 # to do
-# 1. camera config saving
-# 2. camera grab failed
+# 1. pygcamera switch source
+# 2. pygcamera saving img
 # 3. image enhance
 # 4. adding random to the path
 

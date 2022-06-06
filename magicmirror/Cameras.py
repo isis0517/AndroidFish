@@ -29,6 +29,19 @@ class PygCamera:
         self.is_show = True
         self.color_matrix6000K = np.array([[1.81, -0.25, 0.03], [-0.81, 1.78, -0.81], [0.03, -0.53, 1.78]])
 
+        self.path = ""
+        self.frame_num = 0
+        self.is_record = False
+
+    def setFolder(self, path):
+        if os.path.exists(path):
+            s = 0
+            while os.path.exists(path + f"{s}"):
+                s += 1
+            path = path + f"{s}"
+        self.path = path
+        self.frame_num = 0
+
     def setDelayCount(self, count):
         if self.delaycount == count:
             return
@@ -70,6 +83,9 @@ class PygCamera:
             img = np.ones((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)
             self.scenes.append(img)
 
+        if self.is_record:
+            np.save(os.path.join(self.path, f"frame_{self.frame_num}"), img)
+
     def getFrame(self) -> pygame.Surface:
         img = self.scenes.popleft()
         if self.is_show:
@@ -81,6 +97,16 @@ class PygCamera:
         if self.is_show:
             return self.rect.union(self.background)
         return self.background
+
+    def startRecord(self):
+        self.is_record = True
+        os.mkdir(self.path)
+        self.frame_num = 0
+
+    def stopRecord(self):
+        self.is_record = False
+        self.frame_num = 0
+        self.setFolder(self.path)
 
     def update(self) -> pygame.Surface:
         self.grabCam()

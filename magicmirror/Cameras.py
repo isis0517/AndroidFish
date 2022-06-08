@@ -272,7 +272,3 @@ def getCams():
         print("init fail")
         raise Exception("camera init failed")
     return cameras
-
-def savenpy(filename, buf, shape=[], dtype=''):
-
-    np.save(filename, np.ndarray(shape, dtype=dtype, buffer=buf))

@@ -91,7 +91,7 @@ class ConfigWindow(tk.Frame):
         self.fps = 0.
         super().__init__(self.root)
 
-        self.config = {"record": False, "debug_cam": -1, "is_running": True}
+        self.config = {"is_record": False, "debug_cam": -1, "is_running": True}
         self.console_dict = {"state": "idle"}
         self.root.title('console panel')
 
@@ -277,18 +277,18 @@ class ConfigWindow(tk.Frame):
 
     def recording(self):
         self.console_dict['state'] = "recording"
-        self.config["record"] = True
+        self.config["is_record"] = True
         self.send_config()
 
     def done(self):
         self.exp_repeat_entry.insert(tk.END, str(int(self.exp_repeat_entry.get()) - 1))
-        self.config["record"] = False
+        self.config["is_record"] = False
         self.send_config()
         self.schedule_state["repeat"] += 1
         self.schedule_state_labels[self.schedule_state["num"]]['text'] = self.schedule_state["repeat"]
 
     def end_exp(self):
-        self.config['record'] = False
+        self.config['is_record'] = False
         self.send_config()
         self.schedule_state["repeat"] = 0
         self.schedule_state_labels[self.schedule_state["num"]]['text'] = "done"
@@ -306,7 +306,7 @@ class ConfigWindow(tk.Frame):
         self.schedule_remove_but.configure(state="normal")
         self.schedule_go_but.configure(state="normal")
         self.schedule_stop_but.configure(state="disable")
-        self.config['record'] = False
+        self.config['is_record'] = False
         self.send_config()
         self.start = 0
 
@@ -360,7 +360,7 @@ class ConfigWindow(tk.Frame):
 
     def load_config(self, load_config:dict):
         for key, value in load_config.items():
-            if key not in ["debug_cam", "is_running", "record"]:
+            if key not in ["debug_cam", "is_running", "is_record", "record"]:
                 self.config[key] = value
 
     def show_schedule(self):

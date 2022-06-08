@@ -215,14 +215,12 @@ if __name__ == "__main__":
     sc_shape = np.array(pygame.display.get_window_size())
 
     # PygCam setting
-    pyg_cameras = []
     pyg_stages = []
     for cam in use_cams:
-        pyg_cameras.append(PygCamera(cam))
-        pyg_stages.append(TankStage(pyg_cameras[-1], sc_shape))
+        pyg_stages.append(TankStage(PygCamera(cam), sc_shape))
 
     # console setting
-    console = Console([cam.model for cam in pyg_cameras])
+    console = Console([obj.pycamera.model for obj in pyg_stages])
     console.start()
     console.send({"center": [obj.center for obj in pyg_stages]})
 
@@ -240,9 +238,11 @@ if __name__ == "__main__":
     setDisplace = lambda x: None
 
     # rec config
+    pglock = pgFps
     if rec_cams is not None:
         recorder = RecCamera(rec_cams, pgFps)
         able_record = True
+        pglock = 0
 
     # loop start
     while is_running and console.is_alive():
@@ -292,8 +292,8 @@ if __name__ == "__main__":
             else:
                 board.digital[12].write(0)
 
-            if 'record' in config.keys() and able_record:
-                if config['record']:
+            if 'is_record' in config.keys() and able_record:
+                if config['is_record']:
                     recorder.setDuration(config['duration'])
                     recorder.setConfig(config)
                     recorder.setFolder(os.path.join(workpath, config['folder']))
@@ -334,14 +334,14 @@ if __name__ == "__main__":
             recorder.update()
 
         counter += 1
-        pgClock.tick()
+        pgClock.tick(pglock)
         if counter == pgFps:
             console.send({"fps": pgClock.get_fps()})
             counter = 0
 
     pygame.quit()
-    for cam in pyg_cameras:
-        cam.camera.Close()
+    for obj in pyg_stages:
+        obj.pycamera.camera.Close()
     if console.is_alive():
         console.terminate()
 

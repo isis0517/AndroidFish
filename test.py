@@ -435,6 +435,14 @@ if __name__ == "__main__":
     # os.environ["PYLON_CAMEMU"] = "3"
     maxCamerasToUse = 3
     countOfImagesToGrab = 60000
+    video = cv2.VideoCapture(0)
+    ret = True
+    while ret:
+        ret, frame = video.read()
+        print(ret)
+        cv2.imshow("test", frame)
+        cv2.waitKey(10)
+
 
     try:
         # Get the transport layer factory.

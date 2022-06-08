@@ -102,10 +102,10 @@ class ConfigWindow(tk.Frame):
         self.stage_title = tk.Label(self.stage_frame, text="Stage config", font=('Arial', 12), width=20, height=2, anchor='center')
         self.stage_title.grid(column=0, row=0, columnspan=5)
 
-        self.stage_column = ["cam model", "show", "lag", "center of mass", "threshold", "center"]
+        self.stage_column = ["cam model", "show", "lag", "COM", "threshold", "center", "video path"]
         self.stage_col_labels = []
         for col_num, text in enumerate(self.stage_column):
-            self.stage_col_labels.append(tk.Label(self.stage_frame, text=text, width=12, anchor='center'))
+            self.stage_col_labels.append(tk.Label(self.stage_frame, text=text, anchor='center'))
             self.stage_col_labels[-1].grid(column=col_num, row=1)
 
         row_num = 2
@@ -115,6 +115,7 @@ class ConfigWindow(tk.Frame):
         self.stage_com_vars = []
         self.stage_threshold_entrys = []
         self.stage_center_entrys = []
+        self.stage_vpath_entrys = []
         for s, cam in enumerate(self.init_cams):
             self.stage_cam_labels.append(tk.Label(self.stage_frame, text=cam, anchor='w'))
             self.stage_cam_labels[-1].grid(column=0, row=row_num)
@@ -134,11 +135,15 @@ class ConfigWindow(tk.Frame):
 
             self.stage_threshold_entrys.append(tk.Entry(self.stage_frame, width=4))
             self.stage_threshold_entrys[-1].grid(column=4, row=row_num)
-            self.stage_threshold_entrys[-1].insert(tk.END, "30")
+            self.stage_threshold_entrys[-1].insert(tk.END, "0")
 
             self.stage_center_entrys.append(tk.Entry(self.stage_frame, width=12))
             self.stage_center_entrys[-1].grid(column=5, row=row_num)
             self.stage_center_entrys[-1].insert(tk.END, "0, 0")
+
+            self.stage_vpath_entrys.append(tk.Entry(self.stage_frame, width=12))
+            self.stage_vpath_entrys[-1].grid(column=6, row=row_num)
+            self.stage_vpath_entrys[-1].insert(tk.END, "")
 
             row_num += 1
 
@@ -316,7 +321,7 @@ class ConfigWindow(tk.Frame):
         for s, cam in enumerate(self.init_cams):
             self.config[str(s)] = {"show": self.stage_show_vars[s].get(), "lag": int(self.stage_lag_entrys[s].get())
                 , "com": self.stage_com_vars[s].get(), "threshold": int(self.stage_threshold_entrys[s].get())
-                , "center": self.stage_center_entrys[s].get()}
+                , "center": self.stage_center_entrys[s].get(), "vpath": self.stage_vpath_entrys[s].get()}
         self.config["display"] = self.stage_display_var.get()
         self.config["light"] = self.stage_light_var.get()
 
@@ -337,6 +342,8 @@ class ConfigWindow(tk.Frame):
             self.stage_threshold_entrys[s].insert(tk.END, load_config[str(s)]['threshold'])
             self.stage_center_entrys[s].delete(0, tk.END)
             self.stage_center_entrys[s].insert(tk.END,  load_config[str(s)].get("center", "center_err"))
+            self.stage_vpath_entrys[s].delete(0, tk.END)
+            self.stage_vpath_entrys[s].insert(tk.END, load_config[str(s)]['vpath'])
         self.stage_display_var.set(self.config["display"])
         self.stage_light_var.set(self.config["light"])
         if is_disable:
@@ -498,7 +505,7 @@ class ConfigWindow(tk.Frame):
         for s, cam in enumerate(self.init_cams):
             temp[str(s)] = {"show": self.stage_show_vars[s].get(), "lag": int(self.stage_lag_entrys[s].get())
                 , "com": self.stage_com_vars[s].get(), "threshold": int(self.stage_threshold_entrys[s].get())
-                , "center": self.stage_center_entrys[s].get()}
+                , "center": self.stage_center_entrys[s].get(), "vpath":self.stage_vpath_entrys[s].get()}
         temp["display"] = self.stage_display_var.get()
         temp["light"] = self.stage_light_var.get()
         out_file = asksaveasfile(mode='w', defaultextension="txt")
@@ -534,6 +541,11 @@ class ConfigWindow(tk.Frame):
                 for s, entry in enumerate(self.stage_center_entrys):
                     self.stage_center_entrys[s].delete(0, tk.END)
                     self.stage_center_entrys[s].insert(tk.END, centers[s].__str__())
+            if 'vpath' in mesg:
+                pathes = mesg['vpath']
+                for s, path in enumerate(self.stage_vpath_entrys):
+                    self.stage_vpath_entrys[s].delete(0, tk.END)
+                    self.stage_vpath_entrys[s].insert(tk.END, pathes[s].__str__())
         delta = 0
         if self.start:
             delta = int(time.time()) - self.start

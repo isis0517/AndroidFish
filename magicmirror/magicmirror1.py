@@ -10,6 +10,7 @@ from Cameras import *
 from pyfirmata2 import Arduino
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
+import re
 
 # to do
 # 1. pygcamera switch source
@@ -19,6 +20,144 @@ import pygame
 
 # abstract the pygame showing layer so that it can change the playing source. And also, let all recorded camera share
 # same interface.
+
+class VideoLoader:
+    def __init__(self, tank_shape):
+        self.tank_shape = tank_shape
+        self.path = ""
+        self.is_dir = True
+        self.itr = iter([])
+
+    def setPath(self, path):
+        try:
+            self.path = ""
+            self.video.release()
+        except Exception as e:
+            pass
+
+        try :
+            if os.path.exists(path):
+                if os.path.isdir(path):
+                    flist = list(filter(lambda x: "npy" in x, os.listdir(path)))
+                    if len(flist) < 10:
+                        return False
+                    flist.sort(key=lambda x: (int(re.findall('[0-9]+', x)[0])))
+                    self.itr = flist.__iter__()
+                    self.is_dir = True
+                    self.path = path
+                    return True
+
+                elif os.path.isfile(path):
+                    self.video = cv2.VideoCapture(path)
+                    self.path = path
+                    self.is_dir = False
+                    return True
+            return False
+        except Exception as e:
+            print(e)
+            return False
+
+    def read(self):
+        if self.is_dir:
+            try:
+                name = next(self.itr)
+                img = np.load(os.path.join(self.path, name))
+                return True, cv2.resize(img, self.tank_shape)
+            except:
+                pass
+
+        else:
+            ret, img = self.video.read()
+            if ret:
+                return True, cv2.resize(img, self.tank_shape)
+            else:
+                self.video.release()
+        return False, np.ones((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)
+
+class TankStage(pygame.Rect):
+    def __init__(self, camera: PygCamera, sc_shape, **kwargs):
+        self.pycamera = camera
+        self.config = {"model": camera.model}
+        super().__init__((0, 0), tuple(self.pycamera.tank_shape))
+        self.center = (sc_shape[0] - self.pycamera.tank_shape[0] // 2, sc_shape[1] -self.pycamera.tank_shape[1] // 2)
+        self.tank_shape = self.pycamera.tank_shape
+        self.background = self.copy()
+        self.background.height = 1000
+        self.background.bottomleft = self.topleft
+
+        self.video = VideoLoader(self.tank_shape)
+        self.is_video = False
+
+        self.is_show = True
+
+        self.is_save = False
+        self.path = f"{self.pycamera.model}"
+
+        self.img = np.zeros((self.tank_shape[1], self.tank_shape[0], 3))
+
+    def getCover(self):
+        return self.union(self.background)
+
+    def setDisplace(self, dis):
+        self.move_ip(dis)
+        self.background.bottomleft = self.topleft
+
+    def setSource(self, path):
+        self.is_video = False
+        if self.video.setPath(path):
+            print(f"load video: {path}, ")
+            self.is_video = True
+            return True
+        else:
+            print(f"{path} not exist")
+            return False
+
+    def setConfig(self, config:dict):
+        if config["show"] == 1:
+            self.pycamera.is_show = True
+        else:
+            self.pycamera.is_show = False
+        if config["com"] == 1:
+            self.pycamera.COM = True
+        else:
+            self.pycamera.COM = False
+
+        lag = config["lag"]
+        self.pycamera.threshold = config["threshold"]
+        self.pycamera.setDelayCount(pgFps*lag)
+
+        if 'center' in config:
+            try:
+                center = config['center']
+                center = tuple(map(int, center[center.index("(") + 1:center.index(")")].split(",")))
+                if center[0] < 0 or center[1] < 0:
+                    raise Exception()
+                if len(center) > 2:
+                    raise Exception()
+                self.center = center
+            except:
+                pass
+            config['center'] = self.center
+
+        if 'vpath' in config:
+            if self.setSource(config['vpath']):
+                pass
+            else:
+                config["vpath"] = ""
+        self.config.update(config)
+
+    def update(self):
+        if self.is_video:
+            ret, self.img = self.video.read()
+            if not ret:
+                print("is end of the video")
+                self.is_video = False
+            return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
+        self.img = self.pycamera.update()
+
+        return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
+
+
 
 class Logger:
     def __init__(self, rootpath):
@@ -77,13 +216,15 @@ if __name__ == "__main__":
 
     # PygCam setting
     pyg_cameras = []
+    pyg_stages = []
     for cam in use_cams:
-        pyg_cameras.append(PygCamera(cam, sc_shape))
+        pyg_cameras.append(PygCamera(cam))
+        pyg_stages.append(TankStage(pyg_cameras[-1], sc_shape))
 
     # console setting
     console = Console([cam.model for cam in pyg_cameras])
     console.start()
-    console.send({"center": [obj.rect.center for obj in pyg_cameras]})
+    console.send({"center": [obj.center for obj in pyg_stages]})
 
     # loop init
     is_running = True
@@ -116,7 +257,7 @@ if __name__ == "__main__":
 
             # mouse button down, check whether the tank image is selected.
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                for obj in reversed(pyg_cameras):
+                for obj in reversed(pyg_stages):
                     cover = obj.getCover()
                     if cover.collidepoint(pygame.mouse.get_pos()):
                         tank_sel = True
@@ -128,7 +269,7 @@ if __name__ == "__main__":
             # mouse button release, no tank is select
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 tank_sel = False
-                console.send({"center": [obj.rect.center for obj in pyg_cameras]})
+                console.send({"center": [obj.center for obj in pyg_stages]})
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_q:
@@ -139,34 +280,12 @@ if __name__ == "__main__":
         if console.poll():   # if console set some values
             config = console.getConfig()
             is_running = config['is_running']
-            for s, obj in enumerate(pyg_cameras):
-                config[str(s)]["model"] = obj.model
-                obj_config = config[str(s)]
-                s = str(s)
-                if obj_config["show"] == 1:
-                    obj.is_show = True
-                else:
-                    obj.is_show = False
-                if obj_config["com"] == 1:
-                    obj.COM = True
-                else:
-                    obj.COM = False
-                if 'center' in obj_config:
-                    try:
-                        center = obj_config['center']
-                        center = tuple(map(int, center[center.index("(")+1:center.index(")")].split(",")))
-                        if center[0] < 0 or center[1] < 0:
-                            raise Exception()
-                        if len(center) > 2:
-                            raise Exception()
-                        obj.setCenter(center)
-                    except:
-                        pass
-                    console.send({"center": [obj.rect.center for obj in pyg_cameras]})
+            for s, obj in enumerate(pyg_stages):
+                config[str(s)]["model"] = obj.pycamera.model
+                obj.setConfig(config[str(s)])
+            console.send({"center": [obj.center for obj in pyg_stages]})
+            console.send({"vpath": [obj.video.path for obj in pyg_stages]})
 
-                lag = obj_config["lag"]
-                obj.threshold = obj_config["threshold"]
-                obj.setDelayCount(pgFps*lag)
             is_display = config["display"] == 1
             if config["light"] == 1:
                 board.digital[12].write(1)
@@ -196,17 +315,15 @@ if __name__ == "__main__":
             m_pos = c_pos
 
         # update the screen
-        for obj in pyg_cameras:
-            obj.grabCam()
+
+        for obj in pyg_stages:
+            frame = obj.update()
+            screen.blit(frame, obj)
+            rects.append(obj)
+            rects.append(pygame.draw.rect(screen, bk_color, obj.background))
 
         if send_cam >= 0:
-            console.send({"img": pyg_cameras[send_cam].scenes[0]})
-
-        for obj in pyg_cameras:
-            frame = obj.getFrame()
-            screen.blit(frame, obj.rect)
-            rects.append(obj.rect)
-            rects.append(pygame.draw.rect(screen, bk_color, obj.background))
+            console.send({"img": pyg_stages[send_cam].img})
 
         if not is_display:
             rects.append(screen.fill([0, 0, 0]))

@@ -10,37 +10,18 @@ import datetime
 from collections import deque
 
 class PygCamera:
-    def __init__(self, camera: pylon.InstantCamera, sc_shape, tank_size=np.array([1300, 400])):
+    def __init__(self, camera: pylon.InstantCamera, tank_size=np.array([1300, 400])):
         self.model = camera.GetDeviceInfo().GetModelName()
         self.cam_shape, self.dtype = self.camConfig(camera)
         self.shape = np.array([self.cam_shape[1], self.cam_shape[0]])
         self.camera = camera
         self.tank_shape = tuple((self.shape * min(tank_size / self.shape)).astype(int))
-        self.rect = pygame.Rect((0, 0), tuple(self.tank_shape))
-        self.rect.center = (sc_shape[0] - self.tank_shape[0]//2, sc_shape[1] - self.tank_shape[1]//2)
         self.delaycount = 0
         self.scenes = deque()
         self.threshold = 40
         self.COM = False
         self.pos = (0, 0)
-        self.background = self.rect.copy()
-        self.background.height = 1000
-        self.background.bottomleft = self.rect.topleft
         self.is_show = True
-        self.color_matrix6000K = np.array([[1.81, -0.25, 0.03], [-0.81, 1.78, -0.81], [0.03, -0.53, 1.78]])
-
-        self.path = ""
-        self.frame_num = 0
-        self.is_record = False
-
-    def setFolder(self, path):
-        if os.path.exists(path):
-            s = 0
-            while os.path.exists(path + f"{s}"):
-                s += 1
-            path = path + f"{s}"
-        self.path = path
-        self.frame_num = 0
 
     def setDelayCount(self, count):
         if self.delaycount == count:
@@ -49,14 +30,6 @@ class PygCamera:
         lst = [np.zeros(np.append(self.tank_shape, [3]), dtype=np.uint8)]*count
         self.scenes.clear()
         self.scenes.extend(lst)
-
-    def setDisplace(self, dis):
-        center = self.rect.center
-        self.setCenter((center[0]+dis[0], center[1]+dis[1]))
-
-    def setCenter(self, center):
-        self.rect.center = center
-        self.background.bottomleft = self.rect.topleft
 
     def grabCam(self):
         grabResult = self.camera.RetrieveResult(1000, pylon.TimeoutHandling_ThrowException)
@@ -83,34 +56,13 @@ class PygCamera:
             img = np.ones((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)
             self.scenes.append(img)
 
-        if self.is_record:
-            np.save(os.path.join(self.path, f"frame_{self.frame_num}"), img)
-
-    def getFrame(self) -> pygame.Surface:
-        img = self.scenes.popleft()
-        if self.is_show:
-            return pygame.image.frombuffer(img.tobytes(), self.tank_shape, 'RGB')
-        surf = pygame.Surface(self.rect.size)
-        return surf
-
-    def getCover(self):
-        if self.is_show:
-            return self.rect.union(self.background)
-        return self.background
-
-    def startRecord(self):
-        self.is_record = True
-        os.mkdir(self.path)
-        self.frame_num = 0
-
-    def stopRecord(self):
-        self.is_record = False
-        self.frame_num = 0
-        self.setFolder(self.path)
-
-    def update(self) -> pygame.Surface:
+    def update(self) -> np.ndarray:
         self.grabCam()
-        return self.getFrame()
+        return self.scenes.popleft()
+
+    def read(self) -> (bool, np.ndarray):
+        self.grabCam()
+        return True, self.scenes.popleft()
 
     def camConfig(self, camera: pylon.InstantCamera):
         if camera.GetDeviceInfo().GetModelName() == "Emulation":

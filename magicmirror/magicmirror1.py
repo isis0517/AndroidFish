@@ -17,6 +17,8 @@ import pygame
 # 3. image enhance
 # 4. adding random to the path
 
+# abstract the pygame showing layer so that it can change the playing source. And also, let all recorded camera share
+# same interface.
 
 class Logger:
     def __init__(self, rootpath):

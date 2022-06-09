@@ -1,16 +1,9 @@
 import os.path
 import re
 from Cameras import *
+from Configs import *
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
-from TKwindows import CamStageConfig
-
-class TankConfig(TypedDict, total=False):
-    show: int
-    center: str
-    vpath: str
-    spath: str
-
 
 class VideoLoader:
     def __init__(self, tank_shape):
@@ -66,11 +59,11 @@ class VideoLoader:
         return False, np.ones((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)
 
 
-class TankStage(pygame.Rect):
+class TankStage(pygame.Rect, Recorder):
     def __init__(self, camera: PygCamera, sc_shape: Union[tuple, np.ndarray]):
         self.pycamera = camera
+        pygame.Rect.__init__(self, (0, 0), tuple(self.pycamera.tank_shape))
         self.config = CamStageConfig(model=self.pycamera.model)
-        super().__init__((0, 0), tuple(self.pycamera.tank_shape))
         self.center = (sc_shape[0] - self.pycamera.tank_shape[0] // 2, sc_shape[1] -self.pycamera.tank_shape[1] // 2)
         self.tank_shape = self.pycamera.tank_shape
         self.background = self.copy()
@@ -106,7 +99,7 @@ class TankStage(pygame.Rect):
             print(f"{path} not exist")
             return False
 
-    def setConfig(self, config: Union[CamConfig, TankConfig]) -> dict:
+    def setConfig(self, config: CamStageConfig) -> dict:
         if config["show"] == 1:
             self.is_show = True
         else:
@@ -145,7 +138,6 @@ class TankStage(pygame.Rect):
         return self.config
 
     def updateFrame(self) -> pygame.surface:
-        img = self.pycamera.update()
 
         if not self.is_show:
             return pygame.image.frombuffer(bytearray(self.tank_shape[0]*self.tank_shape[1]*3), self.tank_shape, 'RGB')
@@ -158,6 +150,9 @@ class TankStage(pygame.Rect):
                 self.config['vpath'] = ""
             return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
 
+        ret, img = self.pycamera.read()
+        if not ret:
+            return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
         self.img = img
         return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
 

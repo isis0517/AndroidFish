@@ -6,69 +6,55 @@ import os
 import json
 import datetime
 from collections import deque
-import abc
+from Configs import *
 
-
-class CamConfig(TypedDict, total=False):
-    model: str
-    threshold: int
-    lag: int
-    com: bool  # center of mass
-
-
-class RecordConfig(TypedDict, total=False):
-    folder: str
-    duration: int
-    fps: int
 
 
 class Recorder:
-    def __init__(self, fps=30):
+    def __init__(self, fps=30, workpath=""):
         self.is_record = False
         self.frame_num = 0
-        self.path = ""
         self.duration = 0
-        self.config = dict()
         self.fps = fps
         self.maxcount = 0
         self.model = "Not init"
+        self.workpath = workpath
+        self.path = ""
+        self.dirname = ""
         pass
 
-    def setFolder(self, path):
+    def setFolder(self, dirname):
+        path = os.path.join(self.workpath, dirname)
         if os.path.exists(path):
             s = 0
             while os.path.exists(path + f"{s}"):
                 s += 1
             path = path + f"{s}"
+        self.dirname = dirname
         self.path = path
         self.frame_num = 0
 
     def setDuration(self, duration):
         self.duration = duration
-
-    def setConfig(self, config: Union[RecordConfig, CamConfig]):
-        self.config = config
-        self.setFolder(config["folder"])
-        self.setDuration(config['duration'])
-
-    def startRecord(self):
-        if len(self.path) == 0:
-            print(f"{self.model}it is not be saved")
-        path = self.path
-        if os.path.isdir(path):
-            s = 0
-            while os.path.isdir(path + f"({s})"):
-                s += 1
-            path = path + f"{s}"
-        os.mkdir(path)
-        self.path = path
-
-        with open(os.path.join(path, "config"), 'w') as file:
-            file.write(f"{datetime.datetime.now().strftime('%Y/%d/%m %H:%M:%S')}" + "\n")
-            json.dump(self.config, file)
-
         self.frame_num = 0
         self.maxcount = self.duration * self.fps
+
+    def dumpConfig(self, config):
+        if len(self.path) == 0:
+            print(f"{self.model} , no path is used to dump config")
+            return
+
+        with open(os.path.join(self.path, "config"), 'w') as file:
+            file.write(f"{datetime.datetime.now().strftime('%Y/%d/%m %H:%M:%S')}" + "\n")
+            json.dump(config, file)
+
+    def startRecord(self, dirname="", duration=0):
+        if len(dirname) == 0:
+            print(f"{self.model}is not be saved")
+            return
+        self.setFolder(dirname)
+        self.setDuration(duration)
+        os.mkdir(self.path)
         self.is_record = True
 
     def stopRecord(self):
@@ -83,20 +69,15 @@ class Recorder:
             return False
         if self.frame_num >= self.maxcount:
             self.is_record = False
+            self.stopRecord()
             return False
         np.save(os.path.join(self.path, f"frame_{self.frame_num}"), img)
         self.frame_num += 1
         return True
 
-    @abc.abstractmethod
-    def update(self):
-        """must save every frame """
-        pass
 
-
-class PygCamera(Recorder):
+class PygCamera:
     def __init__(self, camera: pylon.InstantCamera, tank_size=np.array([1300, 400]), fps=30):
-        Recorder.__init__(self, fps)
         self.model = camera.GetDeviceInfo().GetModelName()
         self.cam_shape, self.dtype = self.camInit(camera)
         self.shape = np.array([self.cam_shape[1], self.cam_shape[0]])
@@ -107,6 +88,7 @@ class PygCamera(Recorder):
         self.threshold = 40
         self.COM = False
         self.pos = (0, 0)
+        self.fps = fps
 
     def setDelayCount(self, count: int) -> None:
         if self.delaycount == count:
@@ -117,8 +99,10 @@ class PygCamera(Recorder):
         self.scenes.extend(lst)
 
     def grabCam(self) -> None:
-        grabResult = self.camera.RetrieveResult(1000, pylon.TimeoutHandling_ThrowException)
-
+        try:
+            grabResult = self.camera.RetrieveResult(20, pylon.TimeoutHandling_ThrowException)
+        except Exception as e:
+            return
         if grabResult.GrabSucceeded():
             buff = grabResult.GetBuffer()
             img = cv2.cvtColor(np.ndarray(self.cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2BGR)
@@ -147,7 +131,12 @@ class PygCamera(Recorder):
 
     def read(self) -> (bool, np.ndarray):
         self.grabCam()
-        return True, self.scenes.popleft()
+        try:
+            img = self.scenes.popleft()
+        except:
+            return False,  np.ones((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)
+
+        return True, img
 
     def camInit(self, camera: pylon.InstantCamera) -> (np.ndarray, np.dtype):
         if camera.GetDeviceInfo().GetModelName() == "Emulation":
@@ -184,7 +173,7 @@ class PygCamera(Recorder):
             raise Exception('grab failed')
         camera.Open()
         camera.AcquisitionFrameRateEnable.SetValue(True)
-        camera.AcquisitionFrameRate.SetValue(60)
+        camera.AcquisitionFrameRate.SetValue(self.fps*2)
         camera.StartGrabbing(pylon.GrabStrategy_LatestImages)
         camera.OutputQueueSize = 2
 
@@ -195,8 +184,8 @@ class PygCamera(Recorder):
 
 
 class RecCamera(Recorder):
-    def __init__(self, camera, fps):
-        super().__init__(fps)
+    def __init__(self, camera, fps, workpath=""):
+        super().__init__(fps=fps, workpath=workpath)
         self.model = camera.GetDeviceInfo().GetModelName()
         self.poses = []
         self.camera = camera
@@ -220,7 +209,7 @@ class RecCamera(Recorder):
         self.shape = shape
         self.dtype = dtype
 
-    def update(self, poses=None):
+    def updateFrame(self, poses=None):
         grabResult = self.camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
         if grabResult.GrabSucceeded():
             self.saveFrame(np.ndarray(self.shape, dtype=self.dtype, buffer=grabResult.GetBuffer()))

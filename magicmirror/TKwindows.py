@@ -1,6 +1,6 @@
-from Cameras import CamConfig, RecordConfig
-from _util import TankConfig
-from typing import TypedDict, Union, TypeVar, List
+
+from Configs import *
+from typing import List
 import json
 import time
 import tkinter as tk
@@ -11,10 +11,6 @@ import cv2
 from pyfirmata2 import Arduino
 from tkinter.filedialog import asksaveasfile, askopenfilename
 import datetime
-
-
-class CamStageConfig(CamConfig, TankConfig, total=False):
-    pass
 
 
 class ConsoleConfig(RecordConfig, total=False):

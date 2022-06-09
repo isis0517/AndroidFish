@@ -16,7 +16,7 @@ import pygame
 if __name__ == "__main__":
 
     ## this line enable the camera emulater
-    # os.environ["PYLON_CAMEMU"] = "1"
+    os.environ["PYLON_CAMEMU"] = "1"
     # parameter
     bk_color = [200, 200, 200]  # RGB
 
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     # PygCam setting
     pyg_stages = []
     for cam in use_cams:
-        pyg_stages.append(TankStage(PygCamera(cam), sc_shape))
+        pyg_stages.append(TankStage(PygCamera(cam, fps=pgFps), sc_shape))
 
     # console setting
     console = Console([obj.pycamera.model for obj in pyg_stages])
@@ -136,10 +136,8 @@ if __name__ == "__main__":
 
             if 'is_record' in config.keys() and able_record:
                 if config['is_record']:
-                    recorder.setDuration(config['duration'])
-                    recorder.setConfig(config)
-                    recorder.setFolder(os.path.join(workpath, config['folder']))
-                    recorder.startRecord()
+                    recorder.startRecord(dirname=config['folder'], duration=config['duration'])
+                    recorder.dumpConfig(config)
                 else:
                     recorder.stopRecord()
 
@@ -171,7 +169,7 @@ if __name__ == "__main__":
         pygame.display.update(rects)
 
         if able_record:
-            recorder.update()
+            recorder.updateFrame()
 
         counter += 1
         pgClock.tick(pglock)

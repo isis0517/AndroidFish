@@ -75,6 +75,17 @@ class Recorder:
         self.frame_num += 1
         return True
 
+    def saveBuff(self, buff):
+        if not self.is_record:
+            return False
+        if self.frame_num >= self.maxcount:
+            self.is_record = False
+            self.stopRecord()
+            return False
+        np.save(os.path.join(self.path, f"frame_{self.frame_num}"), np.ndarray(buffer=buff, shape=self.shape, dtype=self.dtype))
+        self.frame_num += 1
+        return True
+
 
 class PygCamera:
     def __init__(self, camera: pylon.InstantCamera, tank_size=np.array([1300, 400]), fps=30):
@@ -212,7 +223,7 @@ class RecCamera(Recorder):
     def updateFrame(self, poses=None):
         grabResult = self.camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
         if grabResult.GrabSucceeded():
-            self.saveFrame(np.ndarray(self.shape, dtype=self.dtype, buffer=grabResult.GetBuffer()))
+            self.saveBuff(grabResult.GetBuffer())
 
         else:
             print(f"{self.model} camera grab failed at time {datetime.datetime.now()}, which mission is recording")

@@ -347,7 +347,7 @@ class ConfigWindow(tk.Frame):
             self.stage_center_entrys[s].delete(0, tk.END)
             self.stage_center_entrys[s].insert(tk.END,  load_config[str(s)].get("center", "center_err"))
             self.stage_vpath_entrys[s].delete(0, tk.END)
-            self.stage_vpath_entrys[s].insert(tk.END, load_config[str(s)]['vpath'])
+            self.stage_vpath_entrys[s].insert(tk.END, load_config[str(s)].get('vpath', " "))
         self.stage_display_var.set(self.config["display"])
         self.stage_light_var.set(self.config["light"])
         if is_disable:

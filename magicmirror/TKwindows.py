@@ -1,4 +1,6 @@
-from typing import TypedDict, Union
+from Cameras import CamConfig, RecordConfig
+from _util import TankConfig
+from typing import TypedDict, Union, TypeVar, List
 import json
 import time
 import tkinter as tk
@@ -10,8 +12,19 @@ from pyfirmata2 import Arduino
 from tkinter.filedialog import asksaveasfile, askopenfilename
 import datetime
 
-class ConsoleConfig(TypedDict):
+
+class CamStageConfig(CamConfig, TankConfig, total=False):
     pass
+
+
+class ConsoleConfig(RecordConfig, total=False):
+    light: bool
+    display: bool
+    is_record: bool
+    debug_cam: int
+    is_running: bool
+    break_sec: int
+    cams: List[CamStageConfig]
 
 
 class InitWindows(tk.Frame):
@@ -92,10 +105,10 @@ class ConfigWindow(tk.Frame):
         self.conn_recv = conn_recv
         self.conn_send = conn_send
         self.start = 0
-        self.fps = 0.
+        self.fps = 0
         super().__init__(self.root)
 
-        self.config = {"is_record": False, "debug_cam": -1, "is_running": True}
+        self.config = ConsoleConfig(is_record=False, is_running=True, debug_cam=-1, light=True, display=True, cams=[])
         self.console_dict = {"state": "idle"}
         self.root.title('console panel')
 
@@ -121,6 +134,7 @@ class ConfigWindow(tk.Frame):
         self.stage_center_entrys = []
         self.stage_vpath_entrys = []
         for s, cam in enumerate(self.init_cams):
+            self.config['cams'].insert(s, CamStageConfig(model=cam, lag=0, com=False, threshold=0, center="", vpath="", show=True))
             self.stage_cam_labels.append(tk.Label(self.stage_frame, text=cam, anchor='w'))
             self.stage_cam_labels[-1].grid(column=0, row=row_num)
 
@@ -190,12 +204,6 @@ class ConfigWindow(tk.Frame):
         self.exp_filename_entry.insert(tk.END, "exp")
         self.exp_filename_entry.grid(column=1, row=3)
 
-        self.exp_repeat_label = tk.Label(self.exp_frame, text="Repeats")
-        self.exp_repeat_label.grid(column=0, row=4)
-        self.exp_repeat_entry = tk.Entry(self.exp_frame)
-        self.exp_repeat_entry.insert(tk.END, '1')
-        self.exp_repeat_entry.grid(column=1, row=4)
-
         self.exp_add_but = tk.Button(self.exp_frame, text="ADD", command=self.exp_butf_add)
         self.exp_add_but.grid(column=5, row=10)
 
@@ -209,7 +217,7 @@ class ConfigWindow(tk.Frame):
         self.schedule_title = tk.Label(self.schedule_frame, text="Schedule", font=('Arial', 12))
         self.schedule_title.grid(column=0, row=0, columnspan=5)
 
-        self.schedule_columns = ["num", "sec", "repeat", "folder", "state"]
+        self.schedule_columns = ["num", "sec", "folder", "state"]
         self.schedule_col_labels = []
         for col_num, text in enumerate(self.schedule_columns):
             self.schedule_col_labels.append(tk.Label(self.schedule_frame, text=text, width=10, anchor='center'))
@@ -219,7 +227,7 @@ class ConfigWindow(tk.Frame):
         self.schedule_label_lst = []
         self.schedule_state_labels = []
         self.schedule_event_lst = []
-        self.schedule_state = {"num": 0, "repeat": 0}
+        self.schedule_state = {"num": 0}
 
         self.schedule_remove_comb = ttk.Combobox(self.schedule_frame, values=["None", "ALL"], width=4)
         self.schedule_remove_comb.grid(column=2, row=10)
@@ -285,16 +293,12 @@ class ConfigWindow(tk.Frame):
         self.send_config()
 
     def done(self):
-        self.exp_repeat_entry.insert(tk.END, str(int(self.exp_repeat_entry.get()) - 1))
         self.config["is_record"] = False
         self.send_config()
-        self.schedule_state["repeat"] += 1
-        self.schedule_state_labels[self.schedule_state["num"]]['text'] = self.schedule_state["repeat"]
 
     def end_exp(self):
         self.config['is_record'] = False
         self.send_config()
-        self.schedule_state["repeat"] = 0
         self.schedule_state_labels[self.schedule_state["num"]]['text'] = "done"
         self.schedule_state["num"] += 1
 
@@ -323,9 +327,9 @@ class ConfigWindow(tk.Frame):
 
     def stage_setting(self):
         for s, cam in enumerate(self.init_cams):
-            self.config[str(s)] = {"show": self.stage_show_vars[s].get(), "lag": int(self.stage_lag_entrys[s].get())
-                , "com": self.stage_com_vars[s].get(), "threshold": int(self.stage_threshold_entrys[s].get())
-                , "center": self.stage_center_entrys[s].get(), "vpath": self.stage_vpath_entrys[s].get()}
+            self.config['cams'][s].update(show=self.stage_show_vars[s].get(), lag=int(self.stage_lag_entrys[s].get())
+                , com=self.stage_com_vars[s].get(), threshold=int(self.stage_threshold_entrys[s].get())
+                , center= self.stage_center_entrys[s].get(), vpath=self.stage_vpath_entrys[s].get())
         self.config["display"] = self.stage_display_var.get()
         self.config["light"] = self.stage_light_var.get()
 
@@ -338,16 +342,16 @@ class ConfigWindow(tk.Frame):
                 is_disable = True
             child.configure(state='normal')
         for s, cam in enumerate(self.init_cams):
-            self.stage_show_vars[s].set(load_config[str(s)]['show'])
+            self.stage_show_vars[s].set(load_config['cams'][s]['show'])
             self.stage_lag_entrys[s].delete(0, tk.END)
-            self.stage_lag_entrys[s].insert(tk.END, load_config[str(s)]['lag'])
-            self.stage_com_vars[s].set(load_config[str(s)]['com'])
+            self.stage_lag_entrys[s].insert(tk.END, load_config['cams'][s]['lag'])
+            self.stage_com_vars[s].set(load_config['cams'][s]['com'])
             self.stage_threshold_entrys[s].delete(0, tk.END)
-            self.stage_threshold_entrys[s].insert(tk.END, load_config[str(s)]['threshold'])
+            self.stage_threshold_entrys[s].insert(tk.END, load_config['cams'][s]['threshold'])
             self.stage_center_entrys[s].delete(0, tk.END)
-            self.stage_center_entrys[s].insert(tk.END,  load_config[str(s)].get("center", "center_err"))
+            self.stage_center_entrys[s].insert(tk.END,  load_config['cams'][s].get("center", "center_err"))
             self.stage_vpath_entrys[s].delete(0, tk.END)
-            self.stage_vpath_entrys[s].insert(tk.END, load_config[str(s)].get('vpath', " "))
+            self.stage_vpath_entrys[s].insert(tk.END, load_config['cams'][s].get('vpath', ""))
         self.stage_display_var.set(self.config["display"])
         self.stage_light_var.set(self.config["light"])
         if is_disable:
@@ -357,7 +361,6 @@ class ConfigWindow(tk.Frame):
     def show_exp(self, load_config=None):
         if load_config is None:
             load_config = self.config
-        self.exp_repeat_entry.insert(tk.END, load_config['repeat'])
         self.exp_break_entry.insert(tk.END, load_config['break_sec'])
         self.exp_duration_entry.insert(tk.END, load_config['duration'])
         self.exp_filename_entry.insert(tk.END, load_config['folder'])
@@ -382,9 +385,6 @@ class ConfigWindow(tk.Frame):
             label = tk.Label(self.schedule_frame, text=0)
             label.grid(column=1, row=row_num)
             self.schedule_label_lst.append(label)
-            label = tk.Label(self.schedule_frame, text=sch_config['repeat'])
-            label.grid(column=2, row=row_num)
-            self.schedule_label_lst.append(label)
             label = tk.Label(self.schedule_frame, text=sch_config['folder'])
             label.grid(column=3, row=row_num)
             self.schedule_label_lst.append(label)
@@ -400,11 +400,9 @@ class ConfigWindow(tk.Frame):
         self.schedule_load_but.grid(column=2, row=row_num+1)
 
     def exp_setting(self):
-        repeat = int(self.exp_repeat_entry.get())
         break_sec = int(self.exp_break_entry.get())
         duration_sec = int(self.exp_duration_entry.get())
         foldername = self.exp_filename_entry.get()
-        self.config['repeat'] = repeat
         self.config['folder'] = foldername
         self.config['duration'] = duration_sec
         self.config['break_sec'] = break_sec
@@ -416,20 +414,18 @@ class ConfigWindow(tk.Frame):
         self.show_schedule()
 
     def execute_config(self, config, sec=0):
-        repeat = config['repeat']
         duration_sec = config['duration']
         break_sec = config['break_sec']
-        for s in range(repeat):
-            self.schedule_event_lst.append(self.root.after(sec * 1000, self.load_config, config))
-            self.schedule_event_lst.append(self.root.after(sec * 1000, self.breaking))
-            sec += break_sec
-            self.schedule_event_lst.append(self.root.after(sec * 1000, self.lighting))
-            self.schedule_event_lst.append(self.root.after(sec * 1000, self.show_stage))
-            self.schedule_event_lst.append(self.root.after(sec * 1000, self.show_exp))
-            sec += 2
-            self.schedule_event_lst.append(self.root.after(sec * 1000, self.recording))
-            sec += duration_sec + 1
-            self.schedule_event_lst.append(self.root.after(sec * 1000, self.done))
+        self.schedule_event_lst.append(self.root.after(sec * 1000, self.load_config, config))
+        self.schedule_event_lst.append(self.root.after(sec * 1000, self.breaking))
+        sec += break_sec
+        self.schedule_event_lst.append(self.root.after(sec * 1000, self.lighting))
+        self.schedule_event_lst.append(self.root.after(sec * 1000, self.show_stage))
+        self.schedule_event_lst.append(self.root.after(sec * 1000, self.show_exp))
+        sec += 2
+        self.schedule_event_lst.append(self.root.after(sec * 1000, self.recording))
+        sec += duration_sec + 1
+        self.schedule_event_lst.append(self.root.after(sec * 1000, self.done))
         self.schedule_event_lst.append(self.root.after(sec * 1000, self.end_exp))
         return sec
 
@@ -452,9 +448,6 @@ class ConfigWindow(tk.Frame):
             self.schedule_label_lst.append(label)
             label = tk.Label(self.schedule_frame, text=datetime.timedelta(seconds=sec))
             label.grid(column=1, row=row_num)
-            self.schedule_label_lst.append(label)
-            label = tk.Label(self.schedule_frame, text=sch_config['repeat'])
-            label.grid(column=2, row=row_num)
             self.schedule_label_lst.append(label)
             label = tk.Label(self.schedule_frame, text=sch_config['folder'])
             label.grid(column=3, row=row_num)
@@ -507,9 +500,10 @@ class ConfigWindow(tk.Frame):
         temp['folder'] = foldername
         temp['duration'] = duration_sec
         for s, cam in enumerate(self.init_cams):
-            temp[str(s)] = {"show": self.stage_show_vars[s].get(), "lag": int(self.stage_lag_entrys[s].get())
-                , "com": self.stage_com_vars[s].get(), "threshold": int(self.stage_threshold_entrys[s].get())
-                , "center": self.stage_center_entrys[s].get(), "vpath":self.stage_vpath_entrys[s].get()}
+            temp['cams'][s] = CamStageConfig(show=self.stage_show_vars[s].get(), lag=int(self.stage_lag_entrys[s].get())
+                , com=self.stage_com_vars[s].get(), threshold=int(self.stage_threshold_entrys[s].get())
+                , center= self.stage_center_entrys[s].get(), vpath=self.stage_vpath_entrys[s].get()
+                , model=self.stage_cam_labels[s]['text'])
         temp["display"] = self.stage_display_var.get()
         temp["light"] = self.stage_light_var.get()
         out_file = asksaveasfile(mode='w', defaultextension="txt")
@@ -520,7 +514,7 @@ class ConfigWindow(tk.Frame):
 
     def debug_combf_select(self, event):
         c_num = self.debug_camera_combo.current() - 1
-        if c_num >= 0 and not self.config[str(c_num)]["show"] == 1:
+        if c_num >= 0 and not self.config['cams'][c_num]["show"] == 1:
             c_num = -1
             return
         self.config["debug_cam"] = c_num
@@ -582,10 +576,10 @@ class Console(Process):
     def poll(self):
         return self.conn2[0].poll()
 
-    def getConfig(self):
+    def getConfig(self) -> ConsoleConfig:
         return self.conn2[0].recv()
 
-    def send(self, mes):
+    def send(self, mes: dict):
         if self.conn1[1].closed:
             raise Exception()
         self.conn1[1].send(mes)

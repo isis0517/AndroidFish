@@ -9,7 +9,7 @@ from collections import deque
 import abc
 
 
-class CamConfig(TypedDict):
+class CamConfig(TypedDict, total=False):
     model: str
     threshold: int
     lag: int
@@ -53,7 +53,7 @@ class Recorder:
 
     def startRecord(self):
         if len(self.path) == 0:
-            print(f"{self.moedl}it is not be saved")
+            print(f"{self.model}it is not be saved")
         path = self.path
         if os.path.isdir(path):
             s = 0

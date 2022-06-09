@@ -1,5 +1,4 @@
 from TKwindows import *
-from Cameras import *
 from _util import *
 from pyfirmata2 import Arduino
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
@@ -24,7 +23,7 @@ if __name__ == "__main__":
     # pygame init
     pygame.init()
     pygame.font.init()  # you have to call this at the start,
-    myfont = pygame.font.SysFont('Comic Sans MS', 25)
+    # myfont = pygame.font.SysFont('Comic Sans MS', 25)
 
     # camera init
     cameras = getCams()
@@ -122,8 +121,10 @@ if __name__ == "__main__":
             config = console.getConfig()
             is_running = config['is_running']
             for s, obj in enumerate(pyg_stages):
-                config[str(s)]["model"] = obj.pycamera.model
-                obj.setConfig(config[str(s)])
+                if not config['cams'][s]['model'] == obj.pycamera.model:
+                    print(f"waring, The config may wrong, the config for {config['cams'][s]['model']} is trying to apply"
+                          f" on camera {obj.pycamera.model}")
+                config['cams'][s] = obj.setConfig(config['cams'][s])
             console.send({"center": [obj.center for obj in pyg_stages]})
             console.send({"vpath": [obj.video.path for obj in pyg_stages]})
 

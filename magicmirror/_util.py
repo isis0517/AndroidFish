@@ -5,10 +5,11 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 
 
-class TankConfig(TypedDict):
+class TankConfig(TypedDict, total=False):
     show: int
     center: str
     vpath: str
+    spath: str
 
 
 class VideoLoader:
@@ -63,6 +64,7 @@ class VideoLoader:
             else:
                 self.video.release()
         return False, np.ones((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)
+
 
 class TankStage(pygame.Rect):
     def __init__(self, camera: PygCamera, sc_shape: Union[tuple, np.ndarray]):
@@ -119,14 +121,15 @@ class TankStage(pygame.Rect):
         if 'center' in config:
             try:
                 center = config['center']
-                center = tuple(map(int, center[center.index("(") + 1:center.index(")")].split(",")))
+                center_sparse = center[center.index("(") + 1:center.index(")")].split(",")
+                center = (int(center_sparse[0]), int(center_sparse[1]))
                 if center[0] < 0 or center[1] < 0:
                     raise Exception()
                 if len(center) > 2:
                     raise Exception()
                 self.center = center
                 self.background.bottomleft = self.topleft
-            except:
+            except Exception as e:
                 pass
             config['center'] = self.center.__str__()
 
@@ -135,7 +138,7 @@ class TankStage(pygame.Rect):
                 pass
             else:
                 config["vpath"] = ""
-        self.config.update(config)
+        self.config = config
 
         return self.config
 

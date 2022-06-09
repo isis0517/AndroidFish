@@ -3,7 +3,7 @@ import re
 from Cameras import *
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
-
+from TKwindows import CamStageConfig
 
 class TankConfig(TypedDict, total=False):
     show: int
@@ -69,7 +69,7 @@ class VideoLoader:
 class TankStage(pygame.Rect):
     def __init__(self, camera: PygCamera, sc_shape: Union[tuple, np.ndarray]):
         self.pycamera = camera
-        self.config = {"model": camera.model}
+        self.config = CamStageConfig(model=self.pycamera.model)
         super().__init__((0, 0), tuple(self.pycamera.tank_shape))
         self.center = (sc_shape[0] - self.pycamera.tank_shape[0] // 2, sc_shape[1] -self.pycamera.tank_shape[1] // 2)
         self.tank_shape = self.pycamera.tank_shape
@@ -91,6 +91,7 @@ class TankStage(pygame.Rect):
     def setDisplace(self, dis: tuple) -> None:
         self.move_ip(dis)
         self.background.bottomleft = self.topleft
+        self.config['center'] = self.center.__str__()
 
     def setSource(self, path: str) -> bool:
         if len(path) == 0:
@@ -99,6 +100,7 @@ class TankStage(pygame.Rect):
         if self.video.setPath(path):
             print(f"load video: {path}, ")
             self.is_video = True
+            self.config['vpath'] = path
             return True
         else:
             print(f"{path} not exist")
@@ -153,6 +155,7 @@ class TankStage(pygame.Rect):
             if not ret:
                 print("is end of the video")
                 self.is_video = False
+                self.config['vpath'] = ""
             return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
 
         self.img = img

@@ -3,20 +3,17 @@ from pypylon import pylon
 import numpy as np
 import cv2
 import os
-from multiprocessing import Pool
 import json
 import datetime
 from collections import deque
 import abc
 
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-import pygame
-
 
 class CamConfig(TypedDict):
     model: str
     threshold: int
-    COM: bool  # center of mass
+    lag: int
+    com: bool  # center of mass
 
 
 class RecordConfig(TypedDict, total=False):
@@ -34,6 +31,7 @@ class Recorder:
         self.config = dict()
         self.fps = fps
         self.maxcount = 0
+        self.model = "Not init"
         pass
 
     def setFolder(self, path):
@@ -54,6 +52,8 @@ class Recorder:
         self.setDuration(config['duration'])
 
     def startRecord(self):
+        if len(self.path) == 0:
+            print(f"{self.moedl}it is not be saved")
         path = self.path
         if os.path.isdir(path):
             s = 0
@@ -76,6 +76,7 @@ class Recorder:
             print("be stopped, ", self.frame_num)
         self.is_record = False
         self.frame_num = 0
+        self.path = ""
 
     def saveFrame(self, img: np.ndarray):
         if not self.is_record:
@@ -97,7 +98,7 @@ class PygCamera(Recorder):
     def __init__(self, camera: pylon.InstantCamera, tank_size=np.array([1300, 400]), fps=30):
         Recorder.__init__(self, fps)
         self.model = camera.GetDeviceInfo().GetModelName()
-        self.cam_shape, self.dtype = self.camConfig(camera)
+        self.cam_shape, self.dtype = self.camInit(camera)
         self.shape = np.array([self.cam_shape[1], self.cam_shape[0]])
         self.camera = camera
         self.tank_shape = tuple((self.shape * min(tank_size / self.shape)).astype(int))
@@ -148,7 +149,7 @@ class PygCamera(Recorder):
         self.grabCam()
         return True, self.scenes.popleft()
 
-    def camConfig(self, camera: pylon.InstantCamera) -> (np.ndarray, np.dtype):
+    def camInit(self, camera: pylon.InstantCamera) -> (np.ndarray, np.dtype):
         if camera.GetDeviceInfo().GetModelName() == "Emulation":
             camera.Open()
             grabResult = camera.GrabOne(6000)

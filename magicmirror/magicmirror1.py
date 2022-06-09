@@ -1,16 +1,9 @@
-import os.path
-
-import numpy as np
-import datetime
-from pypylon import pylon
-import cv2
-import json
 from TKwindows import *
 from Cameras import *
+from _util import *
 from pyfirmata2 import Arduino
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
-import re
 
 # to do
 # 1. pygcamera switch source
@@ -20,167 +13,6 @@ import re
 
 # abstract the pygame showing layer so that it can change the playing source. And also, let all recorded camera share
 # same interface.
-
-class VideoLoader:
-    def __init__(self, tank_shape):
-        self.tank_shape = tank_shape
-        self.path = ""
-        self.is_dir = True
-        self.itr = iter([])
-
-    def setPath(self, path: str) -> bool:
-        try:
-            self.path = ""
-            self.video.release()
-        except Exception as e:
-            pass
-
-        try :
-            if os.path.exists(path):
-                if os.path.isdir(path):
-                    flist = list(filter(lambda x: "npy" in x, os.listdir(path)))
-                    if len(flist) < 10:
-                        return False
-                    flist.sort(key=lambda x: (int(re.findall('[0-9]+', x)[0])))
-                    self.itr = flist.__iter__()
-                    self.is_dir = True
-                    self.path = path
-                    return True
-
-                elif os.path.isfile(path):
-                    self.video = cv2.VideoCapture(path)
-                    self.path = path
-                    self.is_dir = False
-                    return True
-            return False
-        except Exception as e:
-            print(e)
-            return False
-
-    def read(self) -> (bool, np.ndarray):
-        if self.is_dir:
-            try:
-                name = next(self.itr)
-                img = np.load(os.path.join(self.path, name))
-                return True, cv2.resize(img, self.tank_shape)
-            except:
-                pass
-
-        else:
-            ret, img = self.video.read()
-            if ret:
-                return True, cv2.resize(img, self.tank_shape)
-            else:
-                self.video.release()
-        return False, np.ones((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)
-
-class TankStage(pygame.Rect):
-    def __init__(self, camera: PygCamera, sc_shape: (int, int) | np.ndarray, **kwargs):
-        self.pycamera = camera
-        self.config = {"model": camera.model}
-        super().__init__((0, 0), tuple(self.pycamera.tank_shape))
-        self.center = (sc_shape[0] - self.pycamera.tank_shape[0] // 2, sc_shape[1] -self.pycamera.tank_shape[1] // 2)
-        self.tank_shape = self.pycamera.tank_shape
-        self.background = self.copy()
-        self.background.height = 1000
-        self.background.bottomleft = self.topleft
-
-        self.video = VideoLoader(self.tank_shape)
-        self.is_video = False
-
-        self.is_show = True
-
-        self.is_save = False
-        self.path = f"{self.pycamera.model}"
-
-        self.img = np.zeros((self.tank_shape[1], self.tank_shape[0], 3))
-
-    def getCover(self) -> pygame.Rect:
-        return self.union(self.background)
-
-    def setDisplace(self, dis: tuple) -> None:
-        self.move_ip(dis)
-        self.background.bottomleft = self.topleft
-
-    def setSource(self, path: str) -> bool:
-        if len(path) == 0:
-            return False
-        self.is_video = False
-        if self.video.setPath(path):
-            print(f"load video: {path}, ")
-            self.is_video = True
-            return True
-        else:
-            print(f"{path} not exist")
-            return False
-
-    def setConfig(self, config: dict) -> dict:
-        if config["show"] == 1:
-            self.is_show = True
-        else:
-            self.is_show = False
-        if config["com"] == 1:
-            self.pycamera.COM = True
-        else:
-            self.pycamera.COM = False
-
-        lag = config["lag"]
-        self.pycamera.threshold = config["threshold"]
-        self.pycamera.setDelayCount(pgFps*lag)
-
-        if 'center' in config:
-            try:
-                center = config['center']
-                center = tuple(map(int, center[center.index("(") + 1:center.index(")")].split(",")))
-                if center[0] < 0 or center[1] < 0:
-                    raise Exception()
-                if len(center) > 2:
-                    raise Exception()
-                self.center = center
-            except:
-                pass
-            config['center'] = self.center
-
-        if 'vpath' in config:
-            if self.setSource(config['vpath']):
-                pass
-            else:
-                config["vpath"] = ""
-        self.config.update(config)
-
-        return self.config
-
-    def update(self) -> pygame.surface:
-        img = self.pycamera.update()
-
-        if not self.is_show:
-            return pygame.image.frombuffer(bytearray(self.tank_shape[0]*self.tank_shape[1]*3), self.tank_shape, 'RGB')
-
-        if self.is_video:
-            ret, self.img = self.video.read()
-            if not ret:
-                print("is end of the video")
-                self.is_video = False
-            return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
-
-        self.img = img
-        return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
-
-
-
-class Logger:
-    def __init__(self, rootpath):
-        self.rootpath = rootpath
-        self.file = open(os.path.join(rootpath, "mm_log"), 'w')
-        self.headers = []
-
-    def log(self, mes):
-        time_stamp = datetime.datetime.now().strftime("%Y/%d/%m %H:%M:%S ")
-        self.file.write(time_stamp+mes)
-
-    def __del__(self):
-        self.file.close()
-
 
 if __name__ == "__main__":
 
@@ -324,7 +156,7 @@ if __name__ == "__main__":
 
         # update the screen
         for obj in pyg_stages:
-            frame = obj.update()
+            frame = obj.updateFrame()
             screen.blit(frame, obj)
             rects.append(obj)
             rects.append(pygame.draw.rect(screen, bk_color, obj.background))

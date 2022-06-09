@@ -1,4 +1,4 @@
-import functools
+from typing import TypedDict, Union
 import json
 import time
 import tkinter as tk
@@ -9,6 +9,10 @@ import cv2
 from pyfirmata2 import Arduino
 from tkinter.filedialog import asksaveasfile, askopenfilename
 import datetime
+
+class ConsoleConfig(TypedDict):
+    pass
+
 
 class InitWindows(tk.Frame):
     def __init__(self, cameras):

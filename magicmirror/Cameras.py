@@ -1,16 +1,101 @@
+from typing import TypedDict, Union
 from pypylon import pylon
 import numpy as np
 import cv2
 import os
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-import pygame
 from multiprocessing import Pool
 import json
 import datetime
 from collections import deque
+import abc
 
-class PygCamera:
-    def __init__(self, camera: pylon.InstantCamera, tank_size=np.array([1300, 400])):
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+import pygame
+
+
+class CamConfig(TypedDict):
+    model: str
+    threshold: int
+    COM: bool  # center of mass
+
+
+class RecordConfig(TypedDict, total=False):
+    folder: str
+    duration: int
+    fps: int
+
+
+class Recorder:
+    def __init__(self, fps=30):
+        self.is_record = False
+        self.frame_num = 0
+        self.path = ""
+        self.duration = 0
+        self.config = dict()
+        self.fps = fps
+        self.maxcount = 0
+        pass
+
+    def setFolder(self, path):
+        if os.path.exists(path):
+            s = 0
+            while os.path.exists(path + f"{s}"):
+                s += 1
+            path = path + f"{s}"
+        self.path = path
+        self.frame_num = 0
+
+    def setDuration(self, duration):
+        self.duration = duration
+
+    def setConfig(self, config: Union[RecordConfig, CamConfig]):
+        self.config = config
+        self.setFolder(config["folder"])
+        self.setDuration(config['duration'])
+
+    def startRecord(self):
+        path = self.path
+        if os.path.isdir(path):
+            s = 0
+            while os.path.isdir(path + f"({s})"):
+                s += 1
+            path = path + f"{s}"
+        os.mkdir(path)
+        self.path = path
+
+        with open(os.path.join(path, "config"), 'w') as file:
+            file.write(f"{datetime.datetime.now().strftime('%Y/%d/%m %H:%M:%S')}" + "\n")
+            json.dump(self.config, file)
+
+        self.frame_num = 0
+        self.maxcount = self.duration * self.fps
+        self.is_record = True
+
+    def stopRecord(self):
+        if self.is_record:
+            print("be stopped, ", self.frame_num)
+        self.is_record = False
+        self.frame_num = 0
+
+    def saveFrame(self, img: np.ndarray):
+        if not self.is_record:
+            return False
+        if self.frame_num >= self.maxcount:
+            self.is_record = False
+            return False
+        np.save(os.path.join(self.path, f"frame_{self.frame_num}"), img)
+        self.frame_num += 1
+        return True
+
+    @abc.abstractmethod
+    def update(self):
+        """must save every frame """
+        pass
+
+
+class PygCamera(Recorder):
+    def __init__(self, camera: pylon.InstantCamera, tank_size=np.array([1300, 400]), fps=30):
+        Recorder.__init__(self, fps)
         self.model = camera.GetDeviceInfo().GetModelName()
         self.cam_shape, self.dtype = self.camConfig(camera)
         self.shape = np.array([self.cam_shape[1], self.cam_shape[0]])
@@ -21,17 +106,16 @@ class PygCamera:
         self.threshold = 40
         self.COM = False
         self.pos = (0, 0)
-        self.is_show = True
 
-    def setDelayCount(self, count):
+    def setDelayCount(self, count: int) -> None:
         if self.delaycount == count:
             return
         self.delaycount = count
-        lst = [np.zeros(np.append(self.tank_shape, [3]), dtype=np.uint8)]*count
+        lst = [np.zeros(np.append(self.tank_shape, [3]), dtype=np.uint8)] * count
         self.scenes.clear()
         self.scenes.extend(lst)
 
-    def grabCam(self):
+    def grabCam(self) -> None:
         grabResult = self.camera.RetrieveResult(1000, pylon.TimeoutHandling_ThrowException)
 
         if grabResult.GrabSucceeded():
@@ -64,7 +148,7 @@ class PygCamera:
         self.grabCam()
         return True, self.scenes.popleft()
 
-    def camConfig(self, camera: pylon.InstantCamera):
+    def camConfig(self, camera: pylon.InstantCamera) -> (np.ndarray, np.dtype):
         if camera.GetDeviceInfo().GetModelName() == "Emulation":
             camera.Open()
             grabResult = camera.GrabOne(6000)
@@ -103,24 +187,17 @@ class PygCamera:
         camera.StartGrabbing(pylon.GrabStrategy_LatestImages)
         camera.OutputQueueSize = 2
 
-        return (shape, dtype)
+        return shape, dtype
 
     def close(self):
         self.camera.Close()
 
 
-class RecCamera():
+class RecCamera(Recorder):
     def __init__(self, camera, fps):
-        super().__init__()
-        self.path = ""
-        self.config = {"fps": fps}
-        self.fps = fps
-        self.duration = 10
-        self.frame_num = 0
-        self.maxcount = self.duration*self.fps
-        self.is_record = False
+        super().__init__(fps)
+        self.model = camera.GetDeviceInfo().GetModelName()
         self.poses = []
-
         self.camera = camera
         self.camera.Open()
         grabResult = self.camera.GrabOne(1000)
@@ -141,72 +218,18 @@ class RecCamera():
         self.camera.OutputQueueSize = 2
         self.shape = shape
         self.dtype = dtype
-        self.pool = Pool()
-
-
-    def setFolder(self, path):
-        if os.path.exists(path):
-            s = 0
-            while os.path.exists(path+f"{s}"):
-                s+=1
-            path = path+f"{s}"
-        self.path = path
-        self.frame_num = 0
-
-    def setDuration(self, duration):
-        self.duration = duration
-
-    def setConfig(self, config: dict):
-        for key, value in config.items():
-            self.config[key] = value
 
     def update(self, poses=None):
         grabResult = self.camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
-        if self.is_record and self.maxcount > self.frame_num:
-            if grabResult.GrabSucceeded():
-                # self.pool.apply_async(savenpy, args=(os.path.join(self.path, f"{self.frame_num}.npy")
-                #                                 , grabResult.GetBuffer())
-                #                                 , kwds={"shape": self.shape, "dtype": self.dtype})
-                np.save(os.path.join(self.path, f"{self.frame_num}.npy"),
-                        np.ndarray(self.shape, dtype=self.dtype, buffer=grabResult.GetBuffer()))
-                self.frame_num += 1
+        if grabResult.GrabSucceeded():
+            self.saveFrame(np.ndarray(self.shape, dtype=self.dtype, buffer=grabResult.GetBuffer()))
 
-            else:
-                print(f"{self.model} camera grab failed at time {datetime.datetime.now()}, which mission is recording")
-
-        elif self.is_record:
-            self.is_record = False
-
-    def startRecord(self):
-
-        path = self.path
-        if os.path.isdir(path):
-            s = 0
-            while os.path.isdir(path+f"({s})"):
-                s+=1
-            path = path+f"{s}"
-        os.mkdir(path)
-        self.path = path
-
-        with open(os.path.join(path, "config"), 'w') as file:
-            file.write(f"{datetime.datetime.now().strftime('%Y/%d/%m %H:%M:%S')}"+"\n")
-            json.dump(self.config, file)
-
-        self.frame_num = 0
-        self.maxcount = self.duration*self.fps
-        self.is_record = True
-        self.poses = []
-
-    def stopRecord(self):
-        if self.is_record:
-            print("be stopped, ", self.frame_num)
-        self.is_record = False
-        self.frame_num = 0
-        self.maxcount = 0
+        else:
+            print(f"{self.model} camera grab failed at time {datetime.datetime.now()}, which mission is recording")
 
     def __del__(self):
         self.camera.Close()
-        self.pool.close()
+
 
 def getCams():
     try:

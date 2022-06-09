@@ -28,7 +28,7 @@ class VideoLoader:
         self.is_dir = True
         self.itr = iter([])
 
-    def setPath(self, path):
+    def setPath(self, path: str) -> bool:
         try:
             self.path = ""
             self.video.release()
@@ -57,7 +57,7 @@ class VideoLoader:
             print(e)
             return False
 
-    def read(self):
+    def read(self) -> (bool, np.ndarray):
         if self.is_dir:
             try:
                 name = next(self.itr)
@@ -75,7 +75,7 @@ class VideoLoader:
         return False, np.ones((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)
 
 class TankStage(pygame.Rect):
-    def __init__(self, camera: PygCamera, sc_shape, **kwargs):
+    def __init__(self, camera: PygCamera, sc_shape: (int, int) | np.ndarray, **kwargs):
         self.pycamera = camera
         self.config = {"model": camera.model}
         super().__init__((0, 0), tuple(self.pycamera.tank_shape))
@@ -95,14 +95,16 @@ class TankStage(pygame.Rect):
 
         self.img = np.zeros((self.tank_shape[1], self.tank_shape[0], 3))
 
-    def getCover(self):
+    def getCover(self) -> pygame.Rect:
         return self.union(self.background)
 
-    def setDisplace(self, dis):
+    def setDisplace(self, dis: tuple) -> None:
         self.move_ip(dis)
         self.background.bottomleft = self.topleft
 
-    def setSource(self, path):
+    def setSource(self, path: str) -> bool:
+        if len(path) == 0:
+            return False
         self.is_video = False
         if self.video.setPath(path):
             print(f"load video: {path}, ")
@@ -112,11 +114,11 @@ class TankStage(pygame.Rect):
             print(f"{path} not exist")
             return False
 
-    def setConfig(self, config:dict):
+    def setConfig(self, config: dict) -> dict:
         if config["show"] == 1:
-            self.pycamera.is_show = True
+            self.is_show = True
         else:
-            self.pycamera.is_show = False
+            self.is_show = False
         if config["com"] == 1:
             self.pycamera.COM = True
         else:
@@ -146,15 +148,22 @@ class TankStage(pygame.Rect):
                 config["vpath"] = ""
         self.config.update(config)
 
-    def update(self):
+        return self.config
+
+    def update(self) -> pygame.surface:
+        img = self.pycamera.update()
+
+        if not self.is_show:
+            return pygame.image.frombuffer(bytearray(self.tank_shape[0]*self.tank_shape[1]*3), self.tank_shape, 'RGB')
+
         if self.is_video:
             ret, self.img = self.video.read()
             if not ret:
                 print("is end of the video")
                 self.is_video = False
             return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
-        self.img = self.pycamera.update()
 
+        self.img = img
         return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
 
 
@@ -306,7 +315,6 @@ if __name__ == "__main__":
             rects.append(screen.fill([0, 0, 0]))
             # update the value
 
-
         # update the pos
         if tank_sel:
             rects.append(screen.fill([0, 0, 0]))
@@ -315,7 +323,6 @@ if __name__ == "__main__":
             m_pos = c_pos
 
         # update the screen
-
         for obj in pyg_stages:
             frame = obj.update()
             screen.blit(frame, obj)

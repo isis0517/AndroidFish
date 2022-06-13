@@ -42,8 +42,8 @@ class InitWindows(tk.Frame):
             row_num += 1
 
         default_path = os.getcwd()
-        if os.path.isdir("/media/hydrolab/L1"):
-            default_path = r"/media/hydrolab/L1"
+        if os.path.isdir("D:/"):
+            default_path = r"D:/"
         self.path_prompt = tk.Label(self, text="Working dictionary : ")
         self.path_prompt.grid(column=0, row=row_num, sticky="W")
         self.path_entry = tk.Entry(self, text=0, width=40)

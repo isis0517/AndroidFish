@@ -62,7 +62,7 @@ class Recorder:
 
     def stopRecord(self):
         if self.is_record:
-            print("be stopped, ", self.frame_num)
+            print(f"{self.model}be stopped, ", self.frame_num)
         self.is_record = False
         self.frame_num = 0
         self.path = ""

@@ -57,7 +57,7 @@ if __name__ == "__main__":
     # PygCam setting
     pyg_stages = []
     for cam in use_cams:
-        pyg_stages.append(TankStage(PygCamera(cam, fps=pgFps), sc_shape))
+        pyg_stages.append(TankStage(PygCamera(cam, fps=pgFps), sc_shape, workpath=workpath))
 
     # console setting
     console = Console([obj.pycamera.model for obj in pyg_stages])
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     # rec config
     pglock = pgFps
     if rec_cams is not None:
-        recorder = RecCamera(rec_cams, pgFps)
+        recorder = RecCamera(rec_cams, pgFps, workpath=workpath)
         able_record = True
         pglock = 0
 
@@ -120,6 +120,7 @@ if __name__ == "__main__":
         if console.poll():   # if console set some values
             config = console.getConfig()
             is_running = config['is_running']
+
             for s, obj in enumerate(pyg_stages):
                 if not config['cams'][s]['model'] == obj.pycamera.model:
                     print(f"waring, The config may wrong, the config for {config['cams'][s]['model']} is trying to apply"
@@ -134,7 +135,7 @@ if __name__ == "__main__":
             else:
                 board.digital[12].write(0)
 
-            if 'is_record' in config.keys():
+            if 'is_record' in config:
                 if config['is_record']:
                     if able_record:
                         recorder.startRecord(dirname=config['folder'], duration=config['duration'])
@@ -162,6 +163,7 @@ if __name__ == "__main__":
         # update the screen
         for obj in pyg_stages:
             frame = obj.updateFrame()
+            obj.saveImg()
             screen.blit(frame, obj)
             rects.append(obj)
             rects.append(pygame.draw.rect(screen, bk_color, obj.background))

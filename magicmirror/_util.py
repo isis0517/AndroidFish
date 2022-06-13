@@ -65,6 +65,7 @@ class TankStage(pygame.Rect, Recorder):
         pygame.Rect.__init__(self, (0, 0), tuple(self.pycamera.tank_shape))
         Recorder.__init__(self, workpath=workpath)
         self.config = CamStageConfig(model=self.pycamera.model)
+        self.model = self.pycamera.model
         self.center = (sc_shape[0] - self.pycamera.tank_shape[0] // 2, sc_shape[1] -self.pycamera.tank_shape[1] // 2)
         self.tank_shape = self.pycamera.tank_shape
         self.background = self.copy()
@@ -137,7 +138,8 @@ class TankStage(pygame.Rect, Recorder):
         self.config = config
 
         if 'sdir' in config:
-            self.setFolder(config['sdir'])
+            if len(self.dirname) == 0:
+                self.setFolder(config['sdir'])
 
         return self.config
 
@@ -158,8 +160,6 @@ class TankStage(pygame.Rect, Recorder):
         if not ret:
             return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
         self.img = img
-
-        self.saveImg()
 
         return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
 

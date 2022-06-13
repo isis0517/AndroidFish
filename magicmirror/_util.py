@@ -60,9 +60,10 @@ class VideoLoader:
 
 
 class TankStage(pygame.Rect, Recorder):
-    def __init__(self, camera: PygCamera, sc_shape: Union[tuple, np.ndarray]):
+    def __init__(self, camera: PygCamera, sc_shape: Union[tuple, np.ndarray], workpath=""):
         self.pycamera = camera
         pygame.Rect.__init__(self, (0, 0), tuple(self.pycamera.tank_shape))
+        Recorder.__init__(self, workpath=workpath)
         self.config = CamStageConfig(model=self.pycamera.model)
         self.center = (sc_shape[0] - self.pycamera.tank_shape[0] // 2, sc_shape[1] -self.pycamera.tank_shape[1] // 2)
         self.tank_shape = self.pycamera.tank_shape
@@ -135,6 +136,9 @@ class TankStage(pygame.Rect, Recorder):
                 config["vpath"] = ""
         self.config = config
 
+        if 'sdir' in config:
+            self.setFolder(config['sdir'])
+
         return self.config
 
     def updateFrame(self) -> pygame.surface:
@@ -154,6 +158,9 @@ class TankStage(pygame.Rect, Recorder):
         if not ret:
             return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
         self.img = img
+
+        self.saveImg()
+
         return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
 
 

@@ -18,7 +18,7 @@ class TankConfig(TypedDict, total=False):
     show: int
     center: str
     vpath: str
-    spath: str
+    sdir: str
 
 
 class CamStageConfig(CamConfig, TankConfig, total=False):

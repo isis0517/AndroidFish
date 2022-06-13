@@ -113,9 +113,9 @@ class ConfigWindow(tk.Frame):
         self.stage_frame.pack(anchor='center')
 
         self.stage_title = tk.Label(self.stage_frame, text="Stage config", font=('Arial', 12), width=20, height=2, anchor='center')
-        self.stage_title.grid(column=0, row=0, columnspan=5)
+        self.stage_title.grid(column=0, row=0, columnspan=7)
 
-        self.stage_column = ["cam model", "show", "lag", "COM", "threshold", "center", "video path"]
+        self.stage_column = ["cam model", "show", "lag", "COM", "threshold", "center", "video path", "save folder"]
         self.stage_col_labels = []
         for col_num, text in enumerate(self.stage_column):
             self.stage_col_labels.append(tk.Label(self.stage_frame, text=text, anchor='center'))
@@ -129,6 +129,8 @@ class ConfigWindow(tk.Frame):
         self.stage_threshold_entrys = []
         self.stage_center_entrys = []
         self.stage_vpath_entrys = []
+        self.stage_sdir_entrys = []
+
         for s, cam in enumerate(self.init_cams):
             self.config['cams'].insert(s, CamStageConfig(model=cam, lag=0, com=False, threshold=0, center="", vpath="", show=True))
             self.stage_cam_labels.append(tk.Label(self.stage_frame, text=cam, anchor='w'))
@@ -159,6 +161,10 @@ class ConfigWindow(tk.Frame):
             self.stage_vpath_entrys[-1].grid(column=6, row=row_num)
             self.stage_vpath_entrys[-1].insert(tk.END, "")
 
+            self.stage_sdir_entrys.append(tk.Entry(self.stage_frame, width=12))
+            self.stage_sdir_entrys[-1].grid(column=7, row=row_num)
+            self.stage_sdir_entrys[-1].insert(tk.END, "")
+
             row_num += 1
 
         self.stage_display_var = tk.IntVar(self.root)
@@ -172,7 +178,7 @@ class ConfigWindow(tk.Frame):
 
         self.stage_set_but = tk.Button(self.stage_frame, text="SET", command=self.stage_butf_set, heigh=1, width=6
                                        , font=('Arial Bold', 12))
-        self.stage_set_but.grid(column=4, row=row_num)
+        self.stage_set_but.grid(column=7, row=row_num)
 
         # =================exp start ===============================
         self.exp_frame = ttk.Frame(borderwidth=2, relief='solid')
@@ -325,7 +331,8 @@ class ConfigWindow(tk.Frame):
         for s, cam in enumerate(self.init_cams):
             self.config['cams'][s].update(show=self.stage_show_vars[s].get(), lag=int(self.stage_lag_entrys[s].get())
                 , com=self.stage_com_vars[s].get(), threshold=int(self.stage_threshold_entrys[s].get())
-                , center= self.stage_center_entrys[s].get(), vpath=self.stage_vpath_entrys[s].get())
+                , center= self.stage_center_entrys[s].get(), vpath=self.stage_vpath_entrys[s].get()
+                , sdir=self.stage_sdir_entrys[s].get())
         self.config["display"] = self.stage_display_var.get()
         self.config["light"] = self.stage_light_var.get()
 
@@ -348,6 +355,8 @@ class ConfigWindow(tk.Frame):
             self.stage_center_entrys[s].insert(tk.END,  load_config['cams'][s].get("center", "center_err"))
             self.stage_vpath_entrys[s].delete(0, tk.END)
             self.stage_vpath_entrys[s].insert(tk.END, load_config['cams'][s].get('vpath', ""))
+            self.stage_sdir_entrys[s].delete(0, tk.END)
+            self.stage_sdir_entrys[s].insert(tk.END, load_config['cams'][s].get('sdir', ""))
         self.stage_display_var.set(self.config["display"])
         self.stage_light_var.set(self.config["light"])
         if is_disable:
@@ -382,10 +391,10 @@ class ConfigWindow(tk.Frame):
             label.grid(column=1, row=row_num)
             self.schedule_label_lst.append(label)
             label = tk.Label(self.schedule_frame, text=sch_config['folder'])
-            label.grid(column=3, row=row_num)
+            label.grid(column=2, row=row_num)
             self.schedule_label_lst.append(label)
             self.schedule_state_labels.append(tk.Label(self.schedule_frame, text="Not run"))
-            self.schedule_state_labels[-1].grid(column=4, row=row_num)
+            self.schedule_state_labels[-1].grid(column=3, row=row_num)
             row_num += 1
         self.schedule_remove_comb['values'] = ["None"]+list(range(row_num-2))+["ALL"]
         self.schedule_remove_comb.grid(column=2, row=row_num, sticky="e")
@@ -446,10 +455,10 @@ class ConfigWindow(tk.Frame):
             label.grid(column=1, row=row_num)
             self.schedule_label_lst.append(label)
             label = tk.Label(self.schedule_frame, text=sch_config['folder'])
-            label.grid(column=3, row=row_num)
+            label.grid(column=2, row=row_num)
             self.schedule_label_lst.append(label)
             self.schedule_state_labels[num]["text"] = "wait"
-            self.schedule_state_labels[num].grid(column=4, row=row_num)
+            self.schedule_state_labels[num].grid(column=3, row=row_num)
             row_num += 1
         self.root.after(sec*1000, self.end_schedule)
         self.schedule_remove_comb['values'] = ["None"] + list(range(row_num - 2)) + ["ALL"]
@@ -499,7 +508,7 @@ class ConfigWindow(tk.Frame):
             temp['cams'][s] = CamStageConfig(show=self.stage_show_vars[s].get(), lag=int(self.stage_lag_entrys[s].get())
                 , com=self.stage_com_vars[s].get(), threshold=int(self.stage_threshold_entrys[s].get())
                 , center= self.stage_center_entrys[s].get(), vpath=self.stage_vpath_entrys[s].get()
-                , model=self.stage_cam_labels[s]['text'])
+                , sdir=self.stage_sdir_entrys[s].get(), model=self.stage_cam_labels[s]['text'])
         temp["display"] = self.stage_display_var.get()
         temp["light"] = self.stage_light_var.get()
         out_file = asksaveasfile(mode='w', defaultextension="txt")
@@ -540,6 +549,11 @@ class ConfigWindow(tk.Frame):
                 for s, path in enumerate(self.stage_vpath_entrys):
                     self.stage_vpath_entrys[s].delete(0, tk.END)
                     self.stage_vpath_entrys[s].insert(tk.END, pathes[s].__str__())
+            if 'sdir' in mesg:
+                pathes = mesg['sdir']
+                for s, path in enumerate(self.stage_sdir_entrys):
+                    self.stage_sdir_entrys[s].delete(0, tk.END)
+                    self.stage_sdir_entrys[s].insert(tk.END, pathes[s].__str__())
         delta = 0
         if self.start:
             delta = int(time.time()) - self.start

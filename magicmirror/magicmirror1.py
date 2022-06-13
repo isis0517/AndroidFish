@@ -125,8 +125,8 @@ if __name__ == "__main__":
                     print(f"waring, The config may wrong, the config for {config['cams'][s]['model']} is trying to apply"
                           f" on camera {obj.pycamera.model}")
                 config['cams'][s] = obj.setConfig(config['cams'][s])
-            console.send({"center": [obj.center for obj in pyg_stages]})
-            console.send({"vpath": [obj.video.path for obj in pyg_stages]})
+            console.send({"center": [obj.center for obj in pyg_stages], "vpath": [obj.video.path for obj in pyg_stages]
+                          , "sdir": [obj.dirname for obj in pyg_stages]})
 
             is_display = config["display"] == 1
             if config["light"] == 1:
@@ -134,12 +134,18 @@ if __name__ == "__main__":
             else:
                 board.digital[12].write(0)
 
-            if 'is_record' in config.keys() and able_record:
+            if 'is_record' in config.keys():
                 if config['is_record']:
-                    recorder.startRecord(dirname=config['folder'], duration=config['duration'])
-                    recorder.dumpConfig(config)
+                    if able_record:
+                        recorder.startRecord(dirname=config['folder'], duration=config['duration'])
+                        recorder.dumpConfig(config)
+                    for s, obj in enumerate(pyg_stages):
+                        obj.startRecord(dirname=config['cams'][s]['sdir'], duration=config['duration'])
                 else:
-                    recorder.stopRecord()
+                    if able_record:
+                        recorder.stopRecord()
+                    for s, obj in enumerate(pyg_stages):
+                        obj.stopRecord()
 
             send_cam = config["debug_cam"]
 

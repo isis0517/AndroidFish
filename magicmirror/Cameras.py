@@ -9,7 +9,6 @@ from collections import deque
 from Configs import *
 
 
-
 class Recorder:
     def __init__(self, fps=30, workpath=""):
         self.is_record = False
@@ -21,9 +20,12 @@ class Recorder:
         self.workpath = workpath
         self.path = ""
         self.dirname = ""
+        self.img = np.zeros((10, 10))
         pass
 
-    def setFolder(self, dirname):
+    def setFolder(self, dirname: str) -> bool:
+        if len(dirname) == 0:
+            return False
         path = os.path.join(self.workpath, dirname)
         if os.path.exists(path):
             s = 0
@@ -33,6 +35,7 @@ class Recorder:
         self.dirname = dirname
         self.path = path
         self.frame_num = 0
+        return True
 
     def setDuration(self, duration):
         self.duration = duration
@@ -63,6 +66,8 @@ class Recorder:
         self.is_record = False
         self.frame_num = 0
         self.path = ""
+        self.dirname = ""
+        self.maxcount = 0
 
     def saveFrame(self, img: np.ndarray):
         if not self.is_record:
@@ -72,6 +77,17 @@ class Recorder:
             self.stopRecord()
             return False
         np.save(os.path.join(self.path, f"frame_{self.frame_num}"), img)
+        self.frame_num += 1
+        return True
+
+    def saveImg(self):
+        if not self.is_record:
+            return False
+        if self.frame_num >= self.maxcount:
+            self.is_record = False
+            self.stopRecord()
+            return False
+        np.save(os.path.join(self.path, f"frame_{self.frame_num}"), self.img)
         self.frame_num += 1
         return True
 
@@ -90,6 +106,7 @@ class Recorder:
 class PygCamera:
     def __init__(self, camera: pylon.InstantCamera, tank_size=np.array([1300, 400]), fps=30):
         self.model = camera.GetDeviceInfo().GetModelName()
+        self.fps = fps
         self.cam_shape, self.dtype = self.camInit(camera)
         self.shape = np.array([self.cam_shape[1], self.cam_shape[0]])
         self.camera = camera
@@ -99,7 +116,6 @@ class PygCamera:
         self.threshold = 40
         self.COM = False
         self.pos = (0, 0)
-        self.fps = fps
 
     def setDelayCount(self, count: int) -> None:
         if self.delaycount == count:

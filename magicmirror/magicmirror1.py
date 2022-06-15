@@ -127,7 +127,7 @@ if __name__ == "__main__":
                           f" on camera {obj.pycamera.model}")
                 config['cams'][s] = obj.setConfig(config['cams'][s])
             console.send({"center": [obj.center for obj in pyg_stages], "vpath": [obj.video.path for obj in pyg_stages]
-                          , "sdir": [obj.dirname for obj in pyg_stages]})
+                          , "sdir": [obj.filename for obj in pyg_stages]})
 
             is_display = config["display"] == 1
             if config["light"] == 1:
@@ -141,7 +141,7 @@ if __name__ == "__main__":
                         recorder.startRecord(dirname=config['folder'], duration=config['duration'])
                         recorder.dumpConfig(config)
                     for s, obj in enumerate(pyg_stages):
-                        obj.startRecord(dirname=config['cams'][s]['sdir'], duration=config['duration'])
+                        obj.startRecord(filename=config['cams'][s]['sdir'], duration=config['duration'])
                 else:
                     if able_record:
                         recorder.stopRecord()

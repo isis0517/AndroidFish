@@ -81,6 +81,8 @@ class TankStage(pygame.Rect, Recorder):
         self.img = np.zeros((self.tank_shape[1], self.tank_shape[0], 3))
         self.fps = self.pycamera.fps
 
+        self.setShape(self.img.shape)
+
     def getCover(self) -> pygame.Rect:
         return self.union(self.background)
 
@@ -139,8 +141,8 @@ class TankStage(pygame.Rect, Recorder):
         self.config = config
 
         if 'sdir' in config:
-            if len(self.dirname) == 0:
-                self.setFolder(config['sdir'])
+            if len(self.filename) == 0:
+                self.setFilename(config['sdir'])
 
         return self.config
 

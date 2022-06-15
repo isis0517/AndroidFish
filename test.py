@@ -9,6 +9,7 @@ import sys, os
 import tkinter as tk
 import tkinter.ttk as ttk
 from pypylon import pylon
+import tables as tb
 from threading import Timer, Event
 # from tqdm import tqdm
 #
@@ -435,6 +436,30 @@ import cv2
 import sys
 
 if __name__ == "__main__":
+
+    filename = 'outarray'
+    shape = (1000, 1000, 3)
+    NUM_COLUMNS = 10
+
+    f = tb.open_file(filename, mode='w')
+    f2 = tb.open_file(filename+"2", mode='w')
+    atom = tb.UInt8Atom()
+
+    array_c = f.create_earray(f.root, 'data', atom, (0,)+shape)
+    array_d = f.create_earray(f2.root, 'side1', atom, (0,)+shape)
+
+    for idx in range(NUM_COLUMNS):
+        x = np.random.randint(0, 255, dtype=np.uint8, size=shape)
+        array_c.append(x[np.newaxis, ...])
+        array_d.append((x//2)[np.newaxis, ...])
+    print(array_c[0].shape)
+    f.close()
+    f2.close()
+
+    f = tb.open_file(r"D:\test2(0)\test2.h5", mode='r')
+    print(f.root.data[0].shape)
+    f.close()
+    exit()
 
     (major_ver, minor_ver, subminor_ver) = (cv2.__version__).split('.')
 

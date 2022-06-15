@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import TypedDict, List
 
 
 class CamConfig(TypedDict, total=False):
@@ -23,3 +23,14 @@ class TankConfig(TypedDict, total=False):
 
 class CamStageConfig(CamConfig, TankConfig, total=False):
     pass
+
+
+class ConsoleConfig(RecordConfig, total=False):
+    light: bool
+    display: bool
+    is_record: bool
+    debug_cam: int
+    is_running: bool
+    break_sec: int
+    bk_color: int
+    cams: List[CamStageConfig]

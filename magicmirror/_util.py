@@ -2,6 +2,7 @@ import os.path
 import re
 from Cameras import *
 from Configs import *
+from typing import Union
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 

@@ -1,26 +1,16 @@
 
 from Configs import *
-from typing import List
 import json
 import time
 import tkinter as tk
 import tkinter.ttk as ttk
+import tkinter.messagebox
 from multiprocessing import Pipe, Process
 import os
 import cv2
 from pyfirmata2 import Arduino
 from tkinter.filedialog import asksaveasfile, askopenfilename
 import datetime
-
-
-class ConsoleConfig(RecordConfig, total=False):
-    light: bool
-    display: bool
-    is_record: bool
-    debug_cam: int
-    is_running: bool
-    break_sec: int
-    cams: List[CamStageConfig]
 
 
 class InitWindows(tk.Frame):
@@ -104,7 +94,8 @@ class ConfigWindow(tk.Frame):
         self.fps = 0
         super().__init__(self.root)
 
-        self.config = ConsoleConfig(is_record=False, is_running=True, debug_cam=-1, light=True, display=True, cams=[])
+        self.config = ConsoleConfig(is_record=False, is_running=True, debug_cam=-1, light=True, display=True, cams=[]
+                                    , bk_color=(200, 200, 200))
         self.console_dict = {"state": "idle"}
         self.root.title('console panel')
 
@@ -172,9 +163,12 @@ class ConfigWindow(tk.Frame):
         self.stage_light_var = tk.IntVar(self.root)
         self.stage_light_var.set(1)
         checkbox = ttk.Checkbutton(self.stage_frame, variable=self.stage_display_var, text="display")
-        checkbox.grid(column=2, row=row_num)
+        checkbox.grid(column=4, row=row_num)
         checkbox = ttk.Checkbutton(self.stage_frame, variable=self.stage_light_var, text="light")
-        checkbox.grid(column=3, row=row_num)
+        checkbox.grid(column=5, row=row_num)
+        self.stage_color_entry = tk.Entry(self.stage_frame, width=10)
+        self.stage_color_entry.insert(tk.END, str(200))
+        self.stage_color_entry.grid(column=6, row=row_num)
 
         self.stage_set_but = tk.Button(self.stage_frame, text="SET", command=self.stage_butf_set, heigh=1, width=6
                                        , font=('Arial Bold', 12))
@@ -324,7 +318,12 @@ class ConfigWindow(tk.Frame):
         self.conn_send.send(self.config)
 
     def stage_butf_set(self):
-        self.stage_setting()
+        try:
+            self.stage_setting()
+        except ValueError as e:
+            tk.messagebox.showerror(title="No send"
+                                    , message="you type the wrong format, there must be int. "+e.__str__())
+            return
         self.send_config()
 
     def stage_setting(self):
@@ -335,6 +334,7 @@ class ConfigWindow(tk.Frame):
                 , sdir=self.stage_sdir_entrys[s].get())
         self.config["display"] = self.stage_display_var.get()
         self.config["light"] = self.stage_light_var.get()
+        self.config['bk_color'] = int(self.stage_color_entry.get())
 
     def show_stage(self, load_config=None):
         if load_config is None:
@@ -359,6 +359,8 @@ class ConfigWindow(tk.Frame):
             self.stage_sdir_entrys[s].insert(tk.END, load_config['cams'][s].get('sdir', ""))
         self.stage_display_var.set(self.config["display"])
         self.stage_light_var.set(self.config["light"])
+        self.stage_color_entry.delete(0, tk.END)
+        self.stage_color_entry.insert(tk.END, self.config.get('bk_color', 200))
         if is_disable:
             for child in self.stage_frame.winfo_children():
                 child.configure(state='disable')
@@ -413,8 +415,22 @@ class ConfigWindow(tk.Frame):
         self.config['break_sec'] = break_sec
 
     def exp_butf_add(self):
-        self.stage_setting()
-        self.exp_setting()
+        try:
+            self.stage_setting()
+        except ValueError as e:
+            tk.messagebox.showerror(title="NOT ADD"
+                                    , message="you type the wrong format in stage, there must be int. "+e.__str__())
+            return
+
+
+        try:
+            self.exp_setting()
+        except ValueError as e:
+
+            tk.messagebox.showerror(title="NOT ADD"
+                                    , message="you type the wrong format in exp setting, there must be int. "+e.__str__())
+            return
+
         self.schedule_config_lst.append(self.config.copy())
         self.show_schedule()
 
@@ -471,7 +487,7 @@ class ConfigWindow(tk.Frame):
 
     def schedule_butf_save(self):
         out_file = asksaveasfile(mode='w', defaultextension="txt")
-        json.dump(self.schedule_config_lst, out_file)
+        json.dump(self.schedule_config_lst, out_file, indent=4)
         out_file.close()
 
     def schedule_butf_load(self):
@@ -514,7 +530,7 @@ class ConfigWindow(tk.Frame):
         out_file = asksaveasfile(mode='w', defaultextension="txt")
         if out_file is None:
             return
-        json.dump(temp, out_file)
+        json.dump(temp, out_file, indent=4)
         out_file.close()
 
     def debug_combf_select(self, event):

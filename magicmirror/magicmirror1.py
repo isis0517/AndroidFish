@@ -5,8 +5,8 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 
 # to do
-# 1. pygcamera switch source
-# 2. pygcamera saving img
+# 1. pygcamera switch source # checking
+# 2. pygcamera saving img # checking
 # 3. image enhance
 # 4. adding random to the path
 
@@ -18,7 +18,7 @@ if __name__ == "__main__":
     ## this line enable the camera emulater
     os.environ["PYLON_CAMEMU"] = "1"
     # parameter
-    bk_color = [200, 200, 200]  # RGB
+    bk_color = (200, 200, 200)  # RGB
 
     # pygame init
     pygame.init()
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     screen = pygame.display.set_mode(init_size, display=display, flags=flags)
     screen.fill([0, 0, 0])
     pygame.display.update()
-    sc_shape = np.array(pygame.display.get_window_size())
+    sc_shape = pygame.display.get_window_size()
 
     # PygCam setting
     pyg_stages = []
@@ -149,6 +149,10 @@ if __name__ == "__main__":
                         obj.stopRecord()
 
             send_cam = config["debug_cam"]
+
+            if 'bk_color' in config:
+                c = config['bk_color']
+                bk_color = (c, c, c)
 
             rects.append(screen.fill([0, 0, 0]))
             # update the value

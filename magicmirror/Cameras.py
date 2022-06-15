@@ -1,4 +1,3 @@
-from typing import TypedDict, Union
 from pypylon import pylon
 import numpy as np
 import cv2
@@ -6,7 +5,6 @@ import os
 import json
 import datetime
 from collections import deque
-from Configs import *
 
 
 class Recorder:
@@ -29,7 +27,7 @@ class Recorder:
         path = os.path.join(self.workpath, dirname)
         if os.path.exists(path):
             s = 0
-            while os.path.exists(path + f"{s}"):
+            while os.path.exists(path + f"({s})"):
                 s += 1
             path = path + f"{s}"
         self.dirname = dirname

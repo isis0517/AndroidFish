@@ -29,7 +29,7 @@ class Recorder:
             s = 0
             while os.path.exists(path + f"({s})"):
                 s += 1
-            path = path + f"{s}"
+            path = path + f"({s})"
         self.dirname = dirname
         self.path = path
         self.frame_num = 0

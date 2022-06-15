@@ -246,6 +246,7 @@ class RecCamera(Recorder):
         self.camera.Close()
 
 
+
 def getCams():
     try:
         T1 = pylon.TlFactory.GetInstance()

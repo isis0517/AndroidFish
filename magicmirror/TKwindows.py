@@ -95,7 +95,7 @@ class ConfigWindow(tk.Frame):
         super().__init__(self.root)
 
         self.config = ConsoleConfig(is_record=False, is_running=True, debug_cam=-1, light=True, display=True, cams=[]
-                                    , bk_color=(200, 200, 200))
+                                    , bk_color=200)
         self.console_dict = {"state": "idle"}
         self.root.title('console panel')
 
@@ -114,7 +114,7 @@ class ConfigWindow(tk.Frame):
 
         row_num = 2
         self.stage_cam_labels = []
-        self.stage_show_vars = []
+        self.stage_show_combos = []
         self.stage_lag_entrys = []
         self.stage_com_vars = []
         self.stage_threshold_entrys = []
@@ -127,10 +127,9 @@ class ConfigWindow(tk.Frame):
             self.stage_cam_labels.append(tk.Label(self.stage_frame, text=cam, anchor='w'))
             self.stage_cam_labels[-1].grid(column=0, row=row_num)
 
-            self.stage_show_vars.append(tk.IntVar(self.root))
-            checkbox = ttk.Checkbutton(self.stage_frame, variable=self.stage_show_vars[-1])
-            checkbox.grid(column=1, row=row_num)
-            self.stage_show_vars[-1].set(1)
+            self.stage_show_combos.append(ttk.Combobox(self.stage_frame, values=['None', 'mirror', 'inter'], width=6))
+            self.stage_show_combos[-1].grid(column=1, row=row_num)
+            self.stage_show_combos[-1].current(1)
 
             self.stage_lag_entrys.append(tk.Entry(self.stage_frame, width=3))
             self.stage_lag_entrys[-1].grid(column=2, row=row_num)
@@ -166,9 +165,11 @@ class ConfigWindow(tk.Frame):
         checkbox.grid(column=4, row=row_num)
         checkbox = ttk.Checkbutton(self.stage_frame, variable=self.stage_light_var, text="light")
         checkbox.grid(column=5, row=row_num)
-        self.stage_color_entry = tk.Entry(self.stage_frame, width=10)
+        label = tk.Label(self.stage_frame, text="bg intens")
+        label.grid(column=6, row=row_num, sticky='w')
+        self.stage_color_entry = tk.Entry(self.stage_frame, width=3)
         self.stage_color_entry.insert(tk.END, str(200))
-        self.stage_color_entry.grid(column=6, row=row_num)
+        self.stage_color_entry.grid(column=6, row=row_num, sticky='e')
 
         self.stage_set_but = tk.Button(self.stage_frame, text="SET", command=self.stage_butf_set, heigh=1, width=6
                                        , font=('Arial Bold', 12))
@@ -328,10 +329,10 @@ class ConfigWindow(tk.Frame):
 
     def stage_setting(self):
         for s, cam in enumerate(self.init_cams):
-            self.config['cams'][s].update(show=self.stage_show_vars[s].get(), lag=int(self.stage_lag_entrys[s].get())
-                , com=self.stage_com_vars[s].get(), threshold=int(self.stage_threshold_entrys[s].get())
-                , center= self.stage_center_entrys[s].get(), vpath=self.stage_vpath_entrys[s].get()
-                , sdir=self.stage_sdir_entrys[s].get())
+            self.config['cams'][s].update(show=self.stage_show_combos[s].current(), lag=int(self.stage_lag_entrys[s].get())
+                                          , com=self.stage_com_vars[s].get(), threshold=int(self.stage_threshold_entrys[s].get())
+                                          , center= self.stage_center_entrys[s].get(), vpath=self.stage_vpath_entrys[s].get()
+                                          , sdir=self.stage_sdir_entrys[s].get())
         self.config["display"] = self.stage_display_var.get()
         self.config["light"] = self.stage_light_var.get()
         self.config['bk_color'] = int(self.stage_color_entry.get())
@@ -345,7 +346,7 @@ class ConfigWindow(tk.Frame):
                 is_disable = True
             child.configure(state='normal')
         for s, cam in enumerate(self.init_cams):
-            self.stage_show_vars[s].set(load_config['cams'][s]['show'])
+            self.stage_show_combos[s].current(load_config['cams'][s]['show'])
             self.stage_lag_entrys[s].delete(0, tk.END)
             self.stage_lag_entrys[s].insert(tk.END, load_config['cams'][s]['lag'])
             self.stage_com_vars[s].set(load_config['cams'][s]['com'])
@@ -521,10 +522,10 @@ class ConfigWindow(tk.Frame):
         temp['folder'] = foldername
         temp['duration'] = duration_sec
         for s, cam in enumerate(self.init_cams):
-            temp['cams'][s] = CamStageConfig(show=self.stage_show_vars[s].get(), lag=int(self.stage_lag_entrys[s].get())
-                , com=self.stage_com_vars[s].get(), threshold=int(self.stage_threshold_entrys[s].get())
-                , center= self.stage_center_entrys[s].get(), vpath=self.stage_vpath_entrys[s].get()
-                , sdir=self.stage_sdir_entrys[s].get(), model=self.stage_cam_labels[s]['text'])
+            temp['cams'][s] = CamStageConfig(show=self.stage_show_combos[s].current(), lag=int(self.stage_lag_entrys[s].get())
+                                             , com=self.stage_com_vars[s].get(), threshold=int(self.stage_threshold_entrys[s].get())
+                                             , center= self.stage_center_entrys[s].get(), vpath=self.stage_vpath_entrys[s].get()
+                                             , sdir=self.stage_sdir_entrys[s].get(), model=self.stage_cam_labels[s]['text'])
         temp["display"] = self.stage_display_var.get()
         temp["light"] = self.stage_light_var.get()
         out_file = asksaveasfile(mode='w', defaultextension="txt")

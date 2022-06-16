@@ -111,7 +111,7 @@ class TankStage(pygame.Rect, Recorder):
 
         self.is_show = True
 
-        self.img = np.zeros((self.tank_shape[1], self.tank_shape[0], 3))
+        self.img = np.zeros((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)
         self.fps = self.pycamera.fps
 
         self.setShape(self.img.shape)

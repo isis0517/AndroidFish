@@ -435,7 +435,32 @@ class Console(Process):
 import cv2
 import sys
 
+class A:
+    file = "no"
+
+    @staticmethod
+    def setFile(filename):
+        A.file = filename
+
+    def __init__(self):
+        pass
+
+    def write(self):
+        print(A.file)
+
+
+
+
 if __name__ == "__main__":
+
+    a = A()
+    b = A()
+    a.write()
+    a.setFile("c8 c8 ")
+    a.write()
+    print(A.file)
+    b.write()
+    exit()
 
     filename1 = 'outarray.h5'
     filename2 = 'outarray2.h5'

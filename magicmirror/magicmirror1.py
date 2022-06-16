@@ -138,7 +138,7 @@ if __name__ == "__main__":
             if 'is_record' in config:
                 if config['is_record']:
                     if able_record:
-                        recorder.startRecord(dirname=config['folder'], duration=config['duration'])
+                        recorder.startRecord(filename=config['folder'], duration=config['duration'])
                         recorder.dumpConfig(config)
                     for s, obj in enumerate(pyg_stages):
                         obj.startRecord(filename=config['cams'][s]['sdir'], duration=config['duration'])

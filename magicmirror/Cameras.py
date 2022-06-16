@@ -134,7 +134,7 @@ class PygCamera:
         if self.delaycount == count:
             return
         self.delaycount = count
-        lst = [np.zeros(np.append(self.tank_shape, [3]), dtype=np.uint8)] * count
+        lst = [np.zeros((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)] * count
         self.scenes.clear()
         self.scenes.extend(lst)
 

@@ -441,25 +441,28 @@ if __name__ == "__main__":
     filename2 = 'outarray2.h5'
     shape = (1000, 1000, 3)
     NUM_COLUMNS = 5000
-    f2 = tb.open_file(filename1, mode='w')
-    atom = tb.UInt8Atom()
-    array_d = f2.create_earray(f2.root, 'side1', atom, (0,)+shape)
-
-    for idx in range(NUM_COLUMNS):
-        x = np.random.randint(0, 255, dtype=np.uint8, size=shape)
-        array_d.append((x)[np.newaxis, ...])
-    f2.close()
+    # f2 = tb.open_file(filename1, mode='w')
+    # atom = tb.UInt8Atom()
+    # array_d = f2.create_earray(f2.root, 'side1', atom, (0,)+shape)
+    #
+    # for idx in range(NUM_COLUMNS):
+    #     x = np.random.randint(0, 255, dtype=np.uint8, size=shape)
+    #     array_d.append((x)[np.newaxis, ...])
+    # f2.close()
 
     f2 = tb.open_file(filename2, mode='w')
-    array_d = f2.create_earray(f2.root, 'side1', atom, (0,)+shape)
+    # array_d = f2.create_earray(f2.root, 'side1', atom, (0,)+shape)
     f = tb.open_file(filename1, mode='r')
     for node in f:
         obj = f.get_node(node)
         if (isinstance(obj, tb.array.Array)):
-            print(obj.shape)
-            for s, img in enumerate(obj):
-                print(s)
-                array_d.append((img // 2)[np.newaxis, ...])
+            print(obj.atom)
+            print(isinstance(obj.atom, tb.UInt8Atom))
+            itr = obj.__iter__()
+            for s in range(len(obj)+1):
+                print(itr.__next__().shape)
+                #print(s)
+                # array_d.append((img // 2)[np.newaxis, ...])
     f.close()
     f2.close()
     exit()

@@ -79,7 +79,8 @@ class Recorder:
         try:
             self.file.close()
         except AttributeError as e:
-            print(f"no file is opened")
+            # print(f"{self.model} no file is saved")
+            pass
 
     def saveFrame(self, img: np.ndarray):
         if not self.is_record:

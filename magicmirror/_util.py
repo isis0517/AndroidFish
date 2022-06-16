@@ -8,20 +8,28 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 
 class VideoLoader:
-    def __init__(self, tank_shape):
-        self.tank_shape = tank_shape
+    def __init__(self, cv_shape):
+        self.cv_shape = cv_shape
+        self.source = 0 # 0: npy, 1: cv2, 2: h5
         self.path = ""
         self.itr = iter([])
-        self.source = 0 # 0: npy, 1: cv2, 2: h5
         self.file = None
-        self.array = np.array([0])
+        self.itarray = iter([0])
+
+    def releaseSource(self):
+        if self.source == 0:
+            self.path = ""
+            self.itr = iter([])
+        if self.source == 1:
+            self.video.release()
+        if self.source == 2:
+            self.file.close()
+            self.itarray = iter([0])
+        self.source = 0
 
     def setPath(self, path: str) -> bool:
-        try:
-            self.path = ""
-            self.video.release()
-        except Exception as e:
-            pass
+
+        self.releaseSource()
 
         try :
             if os.path.exists(path):
@@ -41,10 +49,16 @@ class VideoLoader:
                         self.video = cv2.VideoCapture(path)
                         self.path = path
                         return True
+
                     if path.find(".h5") > 0:
                         self.source = 2
                         self.file = tb.open_file(path, 'r')
-                        self.array = self.file
+                        self.path = path
+                        for node in self.file:
+                            obj = self.file.get_node(node)
+                            if isinstance(obj, tb.array.Array):
+                                if isinstance(obj.atom, tb.UInt8Atom):
+                                    self.itarray = obj.__iter__()
                         return True
                     return False
             return False
@@ -57,17 +71,26 @@ class VideoLoader:
             try:
                 name = next(self.itr)
                 img = np.load(os.path.join(self.path, name))
-                return True, cv2.resize(img, self.tank_shape)
-            except:
+                return True, cv2.resize(img, self.cv_shape)
+            except StopIteration as e:
                 pass
 
         elif self.source == 1:
             ret, img = self.video.read()
             if ret:
-                return True, cv2.resize(img, self.tank_shape)
+                return True, cv2.resize(img, self.cv_shape)
             else:
-                self.video.release()
-        return False, np.ones((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)
+                self.releaseSource()
+
+        elif self.source == 2:
+            try:
+                img = self.itarray.__next__()
+                return True, cv2.resize(img, self.cv_shape)
+            except StopIteration as e:
+                self.releaseSource()
+                pass
+
+        return False, np.ones((self.cv_shape[1], self.cv_shape[0], 3), dtype=np.uint8)
 
 
 class TankStage(pygame.Rect, Recorder):
@@ -106,7 +129,7 @@ class TankStage(pygame.Rect, Recorder):
             return False
         self.is_video = False
         if self.video.setPath(path):
-            print(f"load video: {path}, ")
+            print(f"{self.model} load video: {path}, ")
             self.is_video = True
             self.config['vpath'] = path
             return True

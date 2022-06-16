@@ -3,6 +3,7 @@ import re
 from Cameras import *
 from Configs import *
 from typing import Union
+import tables as tb
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 
@@ -10,8 +11,10 @@ class VideoLoader:
     def __init__(self, tank_shape):
         self.tank_shape = tank_shape
         self.path = ""
-        self.is_dir = True
         self.itr = iter([])
+        self.source = 0 # 0: npy, 1: cv2, 2: h5
+        self.file = None
+        self.array = np.array([0])
 
     def setPath(self, path: str) -> bool:
         try:
@@ -26,24 +29,31 @@ class VideoLoader:
                     flist = list(filter(lambda x: "npy" in x, os.listdir(path)))
                     if len(flist) < 10:
                         return False
+                    self.source = 0
                     flist.sort(key=lambda x: (int(re.findall('[0-9]+', x)[0])))
                     self.itr = flist.__iter__()
-                    self.is_dir = True
                     self.path = path
                     return True
 
                 elif os.path.isfile(path):
-                    self.video = cv2.VideoCapture(path)
-                    self.path = path
-                    self.is_dir = False
-                    return True
+                    if path.find(".mp4") > 0 or path.find(".avi") > 0:
+                        self.source = 1
+                        self.video = cv2.VideoCapture(path)
+                        self.path = path
+                        return True
+                    if path.find(".h5") > 0:
+                        self.source = 2
+                        self.file = tb.open_file(path, 'r')
+                        self.array = self.file
+                        return True
+                    return False
             return False
         except Exception as e:
             print(e)
             return False
 
     def read(self) -> (bool, np.ndarray):
-        if self.is_dir:
+        if self.source == 0:
             try:
                 name = next(self.itr)
                 img = np.load(os.path.join(self.path, name))
@@ -51,7 +61,7 @@ class VideoLoader:
             except:
                 pass
 
-        else:
+        elif self.source == 1:
             ret, img = self.video.read()
             if ret:
                 return True, cv2.resize(img, self.tank_shape)

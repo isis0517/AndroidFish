@@ -437,16 +437,38 @@ import sys
 
 if __name__ == "__main__":
 
-    filename = 'outarray'
+    filename1 = 'outarray.h5'
+    filename2 = 'outarray2.h5'
     shape = (1000, 1000, 3)
-    NUM_COLUMNS = 10
+    NUM_COLUMNS = 5000
+    f2 = tb.open_file(filename1, mode='w')
+    atom = tb.UInt8Atom()
+    array_d = f2.create_earray(f2.root, 'side1', atom, (0,)+shape)
+
+    for idx in range(NUM_COLUMNS):
+        x = np.random.randint(0, 255, dtype=np.uint8, size=shape)
+        array_d.append((x)[np.newaxis, ...])
+    f2.close()
+
+    f2 = tb.open_file(filename2, mode='w')
+    array_d = f2.create_earray(f2.root, 'side1', atom, (0,)+shape)
+    f = tb.open_file(filename1, mode='r')
+    for node in f:
+        obj = f.get_node(node)
+        if (isinstance(obj, tb.array.Array)):
+            print(obj.shape)
+            for s, img in enumerate(obj):
+                print(s)
+                array_d.append((img // 2)[np.newaxis, ...])
+    f.close()
+    f2.close()
+    exit()
 
     f = tb.open_file(filename, mode='w')
     f2 = tb.open_file(filename+"2", mode='w')
-    atom = tb.UInt8Atom()
 
     array_c = f.create_earray(f.root, 'data', atom, (0,)+shape)
-    array_d = f.create_earray(f2.root, 'side1', atom, (0,)+shape)
+    array_d = f2.create_earray(f2.root, 'side1', atom, (0,)+shape)
 
     for idx in range(NUM_COLUMNS):
         x = np.random.randint(0, 255, dtype=np.uint8, size=shape)
@@ -456,10 +478,6 @@ if __name__ == "__main__":
     f.close()
     f2.close()
 
-    f = tb.open_file(r"D:\test2(0)\test2.h5", mode='r')
-    print(f.root.data[0].shape)
-    f.close()
-    exit()
 
     (major_ver, minor_ver, subminor_ver) = (cv2.__version__).split('.')
 

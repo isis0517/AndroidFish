@@ -64,7 +64,7 @@ class Recorder:
         self.setDuration(duration)
         os.mkdir(self.path)
         self.file = tb.open_file(os.path.join(self.path, self.filename+'.h5'), mode='w')
-        self.array = self.file.create_earray(self.file.root, 'data', tb.UInt8Atom(), (0,)+self._rshape
+        self.array = self.file.create_earray(self.file.root, 'imgs', tb.UInt8Atom(), (0,)+self._rshape
                                              , expectedrows=self.maxcount)
         self.is_record = True
 

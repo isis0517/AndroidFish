@@ -117,7 +117,7 @@ class Recorder:
 
 
 class PygCamera:
-    def __init__(self, camera: pylon.InstantCamera, tank_size=np.array([1300, 400]), fps=30):
+    def __init__(self, camera: pylon.InstantCamera, tank_size=np.array([1300, 1300]), fps=30):
         self.model = camera.GetDeviceInfo().GetModelName()
         self.fps = fps
         self.cam_shape, self.dtype = self.camInit(camera)

@@ -444,7 +444,8 @@ class ConfigWindow(tk.Frame):
         self.schedule_event_lst.append(self.root.after(sec * 1000, self.lighting))
         self.schedule_event_lst.append(self.root.after(sec * 1000, self.show_stage))
         self.schedule_event_lst.append(self.root.after(sec * 1000, self.show_exp))
-        sec += 2
+        self.schedule_event_lst.append(self.root.after(sec * 1000, self.load_config, config))
+        sec += 0
         self.schedule_event_lst.append(self.root.after(sec * 1000, self.recording))
         sec += duration_sec + 1
         self.schedule_event_lst.append(self.root.after(sec * 1000, self.done))

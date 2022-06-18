@@ -10,6 +10,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from pypylon import pylon
 import tables as tb
+import h5py
 from threading import Timer, Event
 # from tqdm import tqdm
 #
@@ -453,19 +454,11 @@ class A:
 
 if __name__ == "__main__":
 
-    a = A()
-    b = A()
-    a.write()
-    a.setFile("c8 c8 ")
-    a.write()
-    print(A.file)
-    b.write()
-    exit()
 
     filename1 = 'outarray.h5'
-    filename2 = 'outarray2.h5'
-    shape = (1000, 1000, 3)
-    NUM_COLUMNS = 5000
+    #filename2 = 'outarray2.h5'
+    #shape = (1000, 1000, 3)
+    #NUM_COLUMNS = 5000
     # f2 = tb.open_file(filename1, mode='w')
     # atom = tb.UInt8Atom()
     # array_d = f2.create_earray(f2.root, 'side1', atom, (0,)+shape)
@@ -475,21 +468,22 @@ if __name__ == "__main__":
     #     array_d.append((x)[np.newaxis, ...])
     # f2.close()
 
-    f2 = tb.open_file(filename2, mode='w')
+    #f2 = tb.open_file(filename2, mode='w')
     # array_d = f2.create_earray(f2.root, 'side1', atom, (0,)+shape)
     f = tb.open_file(filename1, mode='r')
     for node in f:
         obj = f.get_node(node)
+        print(node)
         if (isinstance(obj, tb.array.Array)):
-            print(obj.atom)
-            print(isinstance(obj.atom, tb.UInt8Atom))
+            #print(obj.atom)
+            #print(isinstance(obj.atom, tb.UInt8Atom))
             itr = obj.__iter__()
             for s in range(len(obj)+1):
-                print(itr.__next__().shape)
+                pass
+                #print(itr.__next__().shape)
                 #print(s)
                 # array_d.append((img // 2)[np.newaxis, ...])
     f.close()
-    f2.close()
     exit()
 
     f = tb.open_file(filename, mode='w')

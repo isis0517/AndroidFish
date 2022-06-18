@@ -28,10 +28,8 @@ class VideoLoader:
         self.source = 0
 
     def setPath(self, path: str) -> bool:
-
         self.releaseSource()
-
-        try :
+        try:
             if os.path.exists(path):
                 if os.path.isdir(path):
                     flist = list(filter(lambda x: "npy" in x, os.listdir(path)))
@@ -125,8 +123,6 @@ class TankStage(pygame.Rect, Recorder):
         self.config['center'] = self.center.__str__()
 
     def setSource(self, path: str) -> bool:
-        if len(path) == 0:
-            return False
         self.is_video = False
         if self.video.setPath(path):
             print(f"{self.model} load video: {path}, ")

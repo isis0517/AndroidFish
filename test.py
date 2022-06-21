@@ -9,6 +9,8 @@ import sys, os
 import tkinter as tk
 import tkinter.ttk as ttk
 from pypylon import pylon
+import tables as tb
+import h5py
 from threading import Timer, Event
 # from tqdm import tqdm
 #
@@ -434,7 +436,70 @@ class Console(Process):
 import cv2
 import sys
 
+class A:
+    file = "no"
+
+    @staticmethod
+    def setFile(filename):
+        A.file = filename
+
+    def __init__(self):
+        pass
+
+    def write(self):
+        print(A.file)
+
+
+
+
 if __name__ == "__main__":
+
+
+    filename1 = 'outarray.h5'
+    #filename2 = 'outarray2.h5'
+    #shape = (1000, 1000, 3)
+    #NUM_COLUMNS = 5000
+    # f2 = tb.open_file(filename1, mode='w')
+    # atom = tb.UInt8Atom()
+    # array_d = f2.create_earray(f2.root, 'side1', atom, (0,)+shape)
+    #
+    # for idx in range(NUM_COLUMNS):
+    #     x = np.random.randint(0, 255, dtype=np.uint8, size=shape)
+    #     array_d.append((x)[np.newaxis, ...])
+    # f2.close()
+
+    #f2 = tb.open_file(filename2, mode='w')
+    # array_d = f2.create_earray(f2.root, 'side1', atom, (0,)+shape)
+    f = tb.open_file(filename1, mode='r')
+    for node in f:
+        obj = f.get_node(node)
+        print(node)
+        if (isinstance(obj, tb.array.Array)):
+            #print(obj.atom)
+            #print(isinstance(obj.atom, tb.UInt8Atom))
+            itr = obj.__iter__()
+            for s in range(len(obj)+1):
+                pass
+                #print(itr.__next__().shape)
+                #print(s)
+                # array_d.append((img // 2)[np.newaxis, ...])
+    f.close()
+    exit()
+
+    f = tb.open_file(filename, mode='w')
+    f2 = tb.open_file(filename+"2", mode='w')
+
+    array_c = f.create_earray(f.root, 'data', atom, (0,)+shape)
+    array_d = f2.create_earray(f2.root, 'side1', atom, (0,)+shape)
+
+    for idx in range(NUM_COLUMNS):
+        x = np.random.randint(0, 255, dtype=np.uint8, size=shape)
+        array_c.append(x[np.newaxis, ...])
+        array_d.append((x//2)[np.newaxis, ...])
+    print(array_c[0].shape)
+    f.close()
+    f2.close()
+
 
     (major_ver, minor_ver, subminor_ver) = (cv2.__version__).split('.')
 

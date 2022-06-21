@@ -11,7 +11,7 @@ import cv2
 from pyfirmata2 import Arduino
 from tkinter.filedialog import asksaveasfile, askopenfilename
 import datetime
-
+import copy
 
 class InitWindows(tk.Frame):
     def __init__(self, cameras):
@@ -373,10 +373,10 @@ class ConfigWindow(tk.Frame):
         self.exp_duration_entry.insert(tk.END, load_config['duration'])
         self.exp_filename_entry.insert(tk.END, load_config['folder'])
 
-    def load_config(self, load_config:dict):
+    def load_config(self, load_config: dict):
         for key, value in load_config.items():
             if key not in ["debug_cam", "is_running", "is_record", "record"]:
-                self.config[key] = value
+                self.config[key] = copy.deepcopy(value)
 
     def show_schedule(self):
         row_num = 2
@@ -432,7 +432,7 @@ class ConfigWindow(tk.Frame):
                                     , message="you type the wrong format in exp setting, there must be int. "+e.__str__())
             return
 
-        self.schedule_config_lst.append(self.config.copy())
+        self.schedule_config_lst.append(copy.deepcopy(self.config))
         self.show_schedule()
 
     def execute_config(self, config, sec=0):
@@ -444,7 +444,8 @@ class ConfigWindow(tk.Frame):
         self.schedule_event_lst.append(self.root.after(sec * 1000, self.lighting))
         self.schedule_event_lst.append(self.root.after(sec * 1000, self.show_stage))
         self.schedule_event_lst.append(self.root.after(sec * 1000, self.show_exp))
-        sec += 2
+        self.schedule_event_lst.append(self.root.after(sec * 1000, self.load_config, config))
+        sec += 0
         self.schedule_event_lst.append(self.root.after(sec * 1000, self.recording))
         sec += duration_sec + 1
         self.schedule_event_lst.append(self.root.after(sec * 1000, self.done))
@@ -516,7 +517,7 @@ class ConfigWindow(tk.Frame):
             self.show_schedule()
 
     def exp_butf_dump(self):
-        temp = self.config.copy()
+        temp = copy.deepcopy(self.config.copy())
         duration_sec = int(self.exp_duration_entry.get())
         foldername = self.exp_filename_entry.get()
         temp['folder'] = foldername

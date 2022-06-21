@@ -64,12 +64,12 @@ ROIZoneSelector	Zone7
 ROIZoneOffset	0
 ROIZoneSelector	Zone0
 GainSelector	All
-Gain	0.00000
+Gain	1.98914
 GainSelector	All
 BlackLevelSelector	All
 BlackLevel	0.00000
 BlackLevelSelector	All
-Gamma	0.89999
+Gamma	0.80000
 RemoveParameterLimitSelector	Gain
 RemoveParameterLimit	0
 RemoveParameterLimitSelector	ExposureTime
@@ -101,7 +101,7 @@ ColorAdjustmentSaturation	1.00000
 ColorAdjustmentSelector	Yellow
 ColorAdjustmentSaturation	0.96875
 ColorAdjustmentSelector	Green
-ColorAdjustmentSaturation	1.07813
+ColorAdjustmentSaturation	1.07812
 ColorAdjustmentSelector	Cyan
 ColorAdjustmentSaturation	1.05469
 ColorAdjustmentSelector	Blue

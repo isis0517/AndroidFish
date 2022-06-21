@@ -3,61 +3,92 @@ import re
 from Cameras import *
 from Configs import *
 from typing import Union
+import tables as tb
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 
 class VideoLoader:
-    def __init__(self, tank_shape):
-        self.tank_shape = tank_shape
+    def __init__(self, cv_shape):
+        self.cv_shape = cv_shape
+        self.source = 0 # 0: npy, 1: cv2, 2: h5
         self.path = ""
-        self.is_dir = True
         self.itr = iter([])
+        self.file = None
+        self.itarray = iter([0])
+
+    def releaseSource(self):
+        if self.source == 0:
+            self.path = ""
+            self.itr = iter([])
+        if self.source == 1:
+            self.video.release()
+        if self.source == 2:
+            self.file.close()
+            self.itarray = iter([0])
+        self.source = 0
 
     def setPath(self, path: str) -> bool:
+        self.releaseSource()
         try:
-            self.path = ""
-            self.video.release()
-        except Exception as e:
-            pass
-
-        try :
             if os.path.exists(path):
                 if os.path.isdir(path):
                     flist = list(filter(lambda x: "npy" in x, os.listdir(path)))
                     if len(flist) < 10:
                         return False
+                    self.source = 0
                     flist.sort(key=lambda x: (int(re.findall('[0-9]+', x)[0])))
                     self.itr = flist.__iter__()
-                    self.is_dir = True
                     self.path = path
                     return True
 
                 elif os.path.isfile(path):
-                    self.video = cv2.VideoCapture(path)
-                    self.path = path
-                    self.is_dir = False
-                    return True
+                    if path.find(".mp4") > 0 or path.find(".avi") > 0:
+                        self.source = 1
+                        self.video = cv2.VideoCapture(path)
+                        self.path = path
+                        return True
+
+                    if path.find(".h5") > 0:
+                        self.source = 2
+                        self.file = tb.open_file(path, 'r')
+                        self.path = path
+                        for node in self.file:
+                            obj = self.file.get_node(node)
+                            if isinstance(obj, tb.array.Array):
+                                if isinstance(obj.atom, tb.UInt8Atom):
+                                    self.itarray = obj.__iter__()
+                        return True
+                    return False
             return False
         except Exception as e:
             print(e)
             return False
 
     def read(self) -> (bool, np.ndarray):
-        if self.is_dir:
+        if self.source == 0:
             try:
                 name = next(self.itr)
                 img = np.load(os.path.join(self.path, name))
-                return True, cv2.resize(img, self.tank_shape)
-            except:
+                return True, cv2.resize(img, self.cv_shape)
+            except StopIteration as e:
                 pass
 
-        else:
+        elif self.source == 1:
             ret, img = self.video.read()
             if ret:
-                return True, cv2.resize(img, self.tank_shape)
+                return True, cv2.resize(img, self.cv_shape)
             else:
-                self.video.release()
-        return False, np.ones((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)
+                self.releaseSource()
+
+        elif self.source == 2:
+            try:
+                img = self.itarray.__next__()
+                return True, cv2.resize(img, self.cv_shape)
+            except StopIteration as e:
+                self.releaseSource()
+                pass
+
+        return False, np.ones((self.cv_shape[1], self.cv_shape[0], 3), dtype=np.uint8)
 
 
 class TankStage(pygame.Rect, Recorder):
@@ -77,9 +108,12 @@ class TankStage(pygame.Rect, Recorder):
         self.is_video = False
 
         self.is_show = True
+        self.is_flip = False
 
-        self.img = np.zeros((self.tank_shape[1], self.tank_shape[0], 3))
+        self.img = np.zeros((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)
         self.fps = self.pycamera.fps
+
+        self.setShape(self.img.shape)
 
     def getCover(self) -> pygame.Rect:
         return self.union(self.background)
@@ -90,11 +124,9 @@ class TankStage(pygame.Rect, Recorder):
         self.config['center'] = self.center.__str__()
 
     def setSource(self, path: str) -> bool:
-        if len(path) == 0:
-            return False
         self.is_video = False
         if self.video.setPath(path):
-            print(f"load video: {path}, ")
+            print(f"{self.model} load video: {path}, ")
             self.is_video = True
             self.config['vpath'] = path
             return True
@@ -105,6 +137,10 @@ class TankStage(pygame.Rect, Recorder):
     def setConfig(self, config: CamStageConfig) -> dict:
         if config["show"] == 1:
             self.is_show = True
+            self.is_flip = False
+        elif config['show'] == 2:
+            self.is_show = True
+            self.is_flip = True
         else:
             self.is_show = False
         if config["com"] == 1:
@@ -139,8 +175,8 @@ class TankStage(pygame.Rect, Recorder):
         self.config = config
 
         if 'sdir' in config:
-            if len(self.dirname) == 0:
-                self.setFolder(config['sdir'])
+            if len(self.filename) == 0:
+                self.setFilename(config['sdir'])
 
         return self.config
 
@@ -158,12 +194,15 @@ class TankStage(pygame.Rect, Recorder):
             return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
 
         ret, img = self.pycamera.read()
+
+        if self.is_flip:
+            img = np.flip(img, axis=1)
+
         if not ret:
             return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
         self.img = img
 
         return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
-
 
 
 class Logger:

@@ -5,6 +5,7 @@ import os
 import json
 import datetime
 from collections import deque
+import tables as tb
 
 
 class Recorder:
@@ -17,20 +18,26 @@ class Recorder:
         self.model = "Not init"
         self.workpath = workpath
         self.path = ""
-        self.dirname = ""
-        self.img = np.zeros((10, 10))
+        self.filename = ""
+        self._rshape = (10, 10)
+        self.img = np.zeros(self._rshape)
         pass
 
-    def setFolder(self, dirname: str) -> bool:
-        if len(dirname) == 0:
+    def setShape(self, rshape: tuple):
+        self._rshape = rshape
+        if self.img.shape != rshape:
+            print(f"{self.model} img not match rshape")
+
+    def setFilename(self, filename: str) -> bool:
+        if len(filename) == 0:
             return False
-        path = os.path.join(self.workpath, dirname)
+        path = os.path.join(self.workpath, filename)
         if os.path.exists(path):
             s = 0
             while os.path.exists(path + f"({s})"):
                 s += 1
             path = path + f"({s})"
-        self.dirname = dirname
+        self.filename = filename
         self.path = path
         self.frame_num = 0
         return True
@@ -47,15 +54,18 @@ class Recorder:
 
         with open(os.path.join(self.path, "config"), 'w') as file:
             file.write(f"{datetime.datetime.now().strftime('%Y/%d/%m %H:%M:%S')}" + "\n")
-            json.dump(config, file)
+            json.dump(config, file, indent=4)
 
-    def startRecord(self, dirname="", duration=0):
-        if len(dirname) == 0:
+    def startRecord(self, filename="", duration=0):
+        if len(filename) == 0:
             print(f"{self.model}is not be saved")
             return
-        self.setFolder(dirname)
+        self.setFilename(filename)
         self.setDuration(duration)
         os.mkdir(self.path)
+        self.file = tb.open_file(os.path.join(self.path, self.filename+'.h5'), mode='w')
+        self.array = self.file.create_earray(self.file.root, 'imgs', tb.UInt8Atom(), (0,)+self._rshape
+                                             , expectedrows=self.maxcount)
         self.is_record = True
 
     def stopRecord(self):
@@ -64,8 +74,13 @@ class Recorder:
         self.is_record = False
         self.frame_num = 0
         self.path = ""
-        self.dirname = ""
+        self.filename = ""
         self.maxcount = 0
+        try:
+            self.file.close()
+        except AttributeError as e:
+            # print(f"{self.model} no file is saved")
+            pass
 
     def saveFrame(self, img: np.ndarray):
         if not self.is_record:
@@ -74,7 +89,7 @@ class Recorder:
             self.is_record = False
             self.stopRecord()
             return False
-        np.save(os.path.join(self.path, f"frame_{self.frame_num}"), img)
+        self.array.append(img[None, ...])
         self.frame_num += 1
         return True
 
@@ -85,7 +100,7 @@ class Recorder:
             self.is_record = False
             self.stopRecord()
             return False
-        np.save(os.path.join(self.path, f"frame_{self.frame_num}"), self.img)
+        self.array.append(self.img[None, ...])
         self.frame_num += 1
         return True
 
@@ -96,19 +111,19 @@ class Recorder:
             self.is_record = False
             self.stopRecord()
             return False
-        np.save(os.path.join(self.path, f"frame_{self.frame_num}"), np.ndarray(buffer=buff, shape=self.shape, dtype=self.dtype))
+        self.array.append(np.ndarray(buffer=buff, shape=(1,)+self._rshape, dtype=self.dtype))
         self.frame_num += 1
         return True
 
 
 class PygCamera:
-    def __init__(self, camera: pylon.InstantCamera, tank_size=np.array([1300, 400]), fps=30):
+    def __init__(self, camera: pylon.InstantCamera, tank_size=np.array([1300, 1300]), fps=30):
         self.model = camera.GetDeviceInfo().GetModelName()
         self.fps = fps
         self.cam_shape, self.dtype = self.camInit(camera)
-        self.shape = np.array([self.cam_shape[1], self.cam_shape[0]])
+        self.shape = np.array([self.cam_shape[1], self.cam_shape[0]])  # cv order
         self.camera = camera
-        self.tank_shape = tuple((self.shape * min(tank_size / self.shape)).astype(int))
+        self.tank_shape = tuple((self.shape * min(tank_size / self.shape)).astype(int))  # cv order
         self.delaycount = 0
         self.scenes = deque()
         self.threshold = 40
@@ -119,7 +134,7 @@ class PygCamera:
         if self.delaycount == count:
             return
         self.delaycount = count
-        lst = [np.zeros(np.append(self.tank_shape, [3]), dtype=np.uint8)] * count
+        lst = [np.zeros((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)] * count
         self.scenes.clear()
         self.scenes.extend(lst)
 
@@ -132,6 +147,7 @@ class PygCamera:
             buff = grabResult.GetBuffer()
             img = cv2.cvtColor(np.ndarray(self.cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2BGR)
             img = cv2.resize(img, self.tank_shape, cv2.INTER_LINEAR)
+            cv2.medianBlur(img, 5, img)
             fg = (np.max(img, axis=2) > self.threshold).astype(np.uint8)
             img = cv2.bitwise_and(img, img, mask=fg)
             if self.COM:
@@ -233,6 +249,8 @@ class RecCamera(Recorder):
         self.camera.OutputQueueSize = 2
         self.shape = shape
         self.dtype = dtype
+        self.setShape(self.shape)
+
 
     def updateFrame(self, poses=None):
         grabResult = self.camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
@@ -244,7 +262,6 @@ class RecCamera(Recorder):
 
     def __del__(self):
         self.camera.Close()
-
 
 
 def getCams():

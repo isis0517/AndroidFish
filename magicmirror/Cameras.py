@@ -32,12 +32,12 @@ class Recorder:
             path = path + f"({s})"
         self.dirname = dirname
         self.path = path
-        self.frame_num = 0
+        self.frame_num = -1
         return True
 
     def setDuration(self, duration):
         self.duration = duration
-        self.frame_num = 0
+        self.frame_num = -1
         self.maxcount = self.duration * self.fps
 
     def dumpConfig(self, config):
@@ -74,6 +74,10 @@ class Recorder:
             self.is_record = False
             self.stopRecord()
             return False
+
+        if self.frame_num < 0: # one frame delay
+            return True
+
         np.save(os.path.join(self.path, f"frame_{self.frame_num}"), img)
         self.frame_num += 1
         return True
@@ -85,6 +89,10 @@ class Recorder:
             self.is_record = False
             self.stopRecord()
             return False
+
+        if self.frame_num < 0: # one frame delay
+            return True
+
         np.save(os.path.join(self.path, f"frame_{self.frame_num}"), self.img)
         self.frame_num += 1
         return True
@@ -96,6 +104,10 @@ class Recorder:
             self.is_record = False
             self.stopRecord()
             return False
+
+        if self.frame_num < 0: # one frame delay
+            return True
+
         np.save(os.path.join(self.path, f"frame_{self.frame_num}"), np.ndarray(buffer=buff, shape=self.shape, dtype=self.dtype))
         self.frame_num += 1
         return True

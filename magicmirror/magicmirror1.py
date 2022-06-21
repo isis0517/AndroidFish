@@ -164,10 +164,13 @@ if __name__ == "__main__":
             setDisplace((c_pos[0]-m_pos[0], c_pos[1]-m_pos[1]))
             m_pos = c_pos
 
+        if able_record:
+            recorder.updateFrame()
+
         # update the screen
         for obj in pyg_stages:
+            obj.saveImg()   # saving first, due to the one frame buffer
             frame = obj.updateFrame()
-            obj.saveImg()
             screen.blit(frame, obj)
             rects.append(obj)
             rects.append(pygame.draw.rect(screen, bk_color, obj.background))
@@ -179,9 +182,6 @@ if __name__ == "__main__":
             rects.append(screen.fill([0, 0, 0]))
 
         pygame.display.update(rects)
-
-        if able_record:
-            recorder.updateFrame()
 
         counter += 1
         pgClock.tick(pglock)

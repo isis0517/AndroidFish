@@ -108,6 +108,7 @@ class TankStage(pygame.Rect, Recorder):
         self.is_video = False
 
         self.is_show = True
+        self.is_flip = False
 
         self.img = np.zeros((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)
         self.fps = self.pycamera.fps
@@ -136,6 +137,10 @@ class TankStage(pygame.Rect, Recorder):
     def setConfig(self, config: CamStageConfig) -> dict:
         if config["show"] == 1:
             self.is_show = True
+            self.is_flip = False
+        elif config['show'] == 2:
+            self.is_show = True
+            self.is_flip = True
         else:
             self.is_show = False
         if config["com"] == 1:
@@ -189,12 +194,15 @@ class TankStage(pygame.Rect, Recorder):
             return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
 
         ret, img = self.pycamera.read()
+
+        if self.is_flip:
+            img = np.flip(img, axis=1)
+
         if not ret:
             return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
         self.img = img
 
         return pygame.image.frombuffer(self.img.tobytes(), self.tank_shape, 'RGB')
-
 
 
 class Logger:

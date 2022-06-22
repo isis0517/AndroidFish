@@ -478,7 +478,7 @@ class ConfigWindow(tk.Frame):
             self.schedule_state_labels[num]["text"] = "wait"
             self.schedule_state_labels[num].grid(column=3, row=row_num)
             row_num += 1
-        self.root.after(sec*1000, self.end_schedule)
+        self.schedule_event_lst.append(self.root.after(sec*1000, self.end_schedule))
         self.schedule_remove_comb['values'] = ["None"] + list(range(row_num - 2)) + ["ALL"]
         self.schedule_remove_comb.grid(column=2, row=row_num, sticky="e")
         self.schedule_remove_but.grid(column=3, row=row_num, sticky="w")

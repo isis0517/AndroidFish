@@ -160,14 +160,15 @@ class PygCamera:
             return
         if grabResult.GrabSucceeded():
             buff = grabResult.GetBuffer()
-            img = cv2.cvtColor(np.ndarray(self.cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2RGB)
+            img = cv2.cvtColor(np.ndarray(self.cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2BGR)
             img = cv2.resize(img, self.tank_shape, cv2.INTER_LINEAR)
-            img = cv2.medianBlur(img, 7)
+            img = cv2.medianBlur(img, 5)
             #img = cv2.bilateralFilter(img, 5, 20, 4)
             #img = cv2.fastNlMeansDenoisingColored(img, h=2, templateWindowSize=3, searchWindowSize=9)
             fg = (np.max(img, axis=2) > self.threshold).astype(np.uint8)
             #img = cv2.GaussianBlur(img, (5, 5), 1.5)
             #img = cv2.bitwise_and(img, img, mask=fg)
+
             if self.COM:
                 M = cv2.moments(fg)
                 if M["m00"] == 0:
@@ -178,7 +179,7 @@ class PygCamera:
                     cY = int(M["m01"] / M["m00"])
                 cv2.circle(img, (cX, cY), 5, (255, 255, 255), -1)
                 self.pos = (cX, cY)
-            self.scenes.append(np.flip(img, axis=2))
+            self.scenes.append(img)
         else:
             print(f"{self.model} camera grab failed at time {datetime.datetime.now()}")
             img = np.ones((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)

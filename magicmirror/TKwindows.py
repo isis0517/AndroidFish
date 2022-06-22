@@ -435,22 +435,22 @@ class ConfigWindow(tk.Frame):
         self.schedule_config_lst.append(copy.deepcopy(self.config))
         self.show_schedule()
 
-    def execute_config(self, config, sec=0):
+    def execute_config(self, config, accsec=0):
         duration_sec = config['duration']
         break_sec = config['break_sec']
-        self.schedule_event_lst.append(self.root.after(sec * 1000, self.load_config, config))
-        self.schedule_event_lst.append(self.root.after(sec * 1000, self.breaking))
-        sec += break_sec
-        self.schedule_event_lst.append(self.root.after(sec * 1000, self.lighting))
-        self.schedule_event_lst.append(self.root.after(sec * 1000, self.show_stage))
-        self.schedule_event_lst.append(self.root.after(sec * 1000, self.show_exp))
-        self.schedule_event_lst.append(self.root.after(sec * 1000, self.load_config, config))
-        sec += 0
-        self.schedule_event_lst.append(self.root.after(sec * 1000, self.recording))
-        sec += duration_sec + 1
-        self.schedule_event_lst.append(self.root.after(sec * 1000, self.done))
-        self.schedule_event_lst.append(self.root.after(sec * 1000, self.end_exp))
-        return sec
+        self.schedule_event_lst.append(self.root.after(accsec * 1000, self.load_config, config))
+        self.schedule_event_lst.append(self.root.after(accsec * 1000, self.breaking))
+        accsec += break_sec
+        self.schedule_event_lst.append(self.root.after(accsec * 1000, self.lighting))
+        self.schedule_event_lst.append(self.root.after(accsec * 1000, self.show_stage))
+        self.schedule_event_lst.append(self.root.after(accsec * 1000, self.show_exp))
+        self.schedule_event_lst.append(self.root.after(accsec * 1000, self.load_config, config))
+        accsec += 0
+        self.schedule_event_lst.append(self.root.after(accsec * 1000, self.recording))
+        accsec = duration_sec + 1 + accsec
+        self.schedule_event_lst.append(self.root.after(accsec * 1000, self.done))
+        self.schedule_event_lst.append(self.root.after(accsec * 1000, self.end_exp))
+        return accsec
 
     def schedule_butf_go(self):
         for child in self.stage_frame.winfo_children():
@@ -465,7 +465,7 @@ class ConfigWindow(tk.Frame):
         sec = 0
         self.schedule_event_lst = []
         for num, sch_config in enumerate(self.schedule_config_lst):
-            sec = self.execute_config(sch_config, sec)
+            sec = self.execute_config(sch_config, accsec=sec)
             label = tk.Label(self.schedule_frame, text=num)
             label.grid(column=0, row=row_num)
             self.schedule_label_lst.append(label)

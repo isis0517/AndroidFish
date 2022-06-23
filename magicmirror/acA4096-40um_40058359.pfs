@@ -12,7 +12,7 @@ BinningHorizontalMode	Sum
 BinningHorizontal	1
 BinningVerticalMode	Average
 BinningVertical	1
-ReverseX	1
+ReverseX	0
 ReverseY	0
 PixelFormat	Mono8
 TestImageSelector	Off

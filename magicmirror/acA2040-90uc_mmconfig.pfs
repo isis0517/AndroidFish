@@ -14,7 +14,7 @@ ReverseY	0
 PixelFormat	BayerBG8
 TestImageSelector	Off
 GainSelector	All
-Gain	3.02535
+Gain	4.99755
 GainSelector	All
 BlackLevelSelector	All
 BlackLevel	0.00000

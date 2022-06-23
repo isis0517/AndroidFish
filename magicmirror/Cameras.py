@@ -44,7 +44,7 @@ class Recorder:
 
     def setDuration(self, duration):
         self.duration = duration
-        self.frame_num = -1
+        self.frame_num = -2
         self.maxcount = self.duration * self.fps
 
     def dumpConfig(self, config):
@@ -117,6 +117,7 @@ class Recorder:
     def saveBuff(self, buff):
         if not self.is_record:
             return False
+
         if self.frame_num >= self.maxcount:
             self.is_record = False
             self.stopRecord()

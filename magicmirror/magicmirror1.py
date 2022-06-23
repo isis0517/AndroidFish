@@ -164,9 +164,6 @@ if __name__ == "__main__":
             setDisplace((c_pos[0]-m_pos[0], c_pos[1]-m_pos[1]))
             m_pos = c_pos
 
-        if able_record:
-            recorder.updateFrame()
-
         # update the screen
         for obj in pyg_stages:
             obj.saveImg()   # saving first, due to the one frame buffer
@@ -175,12 +172,16 @@ if __name__ == "__main__":
             rects.append(obj)
             rects.append(pygame.draw.rect(screen, bk_color, obj.background))
 
+        if able_record:
+            recorder.updateFrame()
+
         if send_cam >= 0:
             console.send({"img": pyg_stages[send_cam].img})
 
         if not is_display:
             rects.append(screen.fill([0, 0, 0]))
 
+        # stage update here
         pygame.display.update(rects)
 
         counter += 1

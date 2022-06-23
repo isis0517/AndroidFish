@@ -134,7 +134,7 @@ class TankStage(pygame.Rect, Recorder):
             print(f"{path} not exist")
             return False
 
-    def setConfig(self, config: CamStageConfig) -> dict:
+    def setConfig(self, config: Union[CamStageConfig, TankConfig]) -> dict:
         if config["show"] == 1:
             self.is_show = True
             self.is_flip = False

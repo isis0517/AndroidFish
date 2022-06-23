@@ -278,13 +278,12 @@ class ConfigWindow(tk.Frame):
         self.show_stage(self.config)
         self.send_config()
 
-    def lighting(self):
+    def recording(self):
+        """
+        turn on the light and go record
+        """
         self.config['display'] = True
         self.config['light'] = True
-        self.show_stage(self.config)
-        self.send_config()
-
-    def recording(self):
         self.console_dict['state'] = "recording"
         self.config["is_record"] = True
         self.send_config()
@@ -441,12 +440,10 @@ class ConfigWindow(tk.Frame):
         self.schedule_event_lst.append(self.root.after(accsec * 1000, self.load_config, config))
         self.schedule_event_lst.append(self.root.after(accsec * 1000, self.breaking))
         accsec += break_sec
-        self.schedule_event_lst.append(self.root.after(accsec * 1000, self.lighting))
+        self.schedule_event_lst.append(self.root.after(accsec * 1000, self.load_config, config))
+        self.schedule_event_lst.append(self.root.after(accsec * 1000, self.recording))
         self.schedule_event_lst.append(self.root.after(accsec * 1000, self.show_stage))
         self.schedule_event_lst.append(self.root.after(accsec * 1000, self.show_exp))
-        self.schedule_event_lst.append(self.root.after(accsec * 1000, self.load_config, config))
-        accsec += 0
-        self.schedule_event_lst.append(self.root.after(accsec * 1000, self.recording))
         accsec = duration_sec + 1 + accsec
         self.schedule_event_lst.append(self.root.after(accsec * 1000, self.done))
         self.schedule_event_lst.append(self.root.after(accsec * 1000, self.end_exp))

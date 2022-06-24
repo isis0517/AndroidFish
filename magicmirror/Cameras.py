@@ -6,6 +6,7 @@ import json
 import datetime
 from collections import deque
 import tables as tb
+import time
 
 
 class Recorder:
@@ -44,7 +45,7 @@ class Recorder:
 
     def setDuration(self, duration):
         self.duration = duration
-        self.frame_num = -2
+        self.frame_num = -1
         self.maxcount = self.duration * self.fps
 
     def dumpConfig(self, config):
@@ -115,6 +116,9 @@ class Recorder:
         return True
 
     def saveBuff(self, buff):
+        """
+        for RecCam only, at the lag at the buffer frame.
+        """
         if not self.is_record:
             return False
 
@@ -125,6 +129,8 @@ class Recorder:
 
         if self.frame_num < 0: # one frame buffer
             self.frame_num += 1
+            del buff
+            time.sleep(2/self.fps)
             return True
 
         self.array.append(np.ndarray(buffer=buff, shape=(1,)+self._rshape, dtype=self.dtype))
@@ -266,14 +272,14 @@ class RecCamera(Recorder):
         self.camera.AcquisitionFrameRateEnable.SetValue(True)
         self.camera.AcquisitionFrameRate.SetValue(self.fps)
         self.camera.StartGrabbing(pylon.GrabStrategy_LatestImages)
-        self.camera.OutputQueueSize = 2
+        self.camera.OutputQueueSize = 1
         self.shape = shape
         self.dtype = dtype
         self.setShape(self.shape)
 
 
     def updateFrame(self, poses=None):
-        grabResult = self.camera.RetrieveResult(10000, pylon.TimeoutHandling_ThrowException)
+        grabResult = self.camera.RetrieveResult(1000, pylon.TimeoutHandling_ThrowException)
         if grabResult.GrabSucceeded():
             self.saveBuff(grabResult.GetBuffer())
 

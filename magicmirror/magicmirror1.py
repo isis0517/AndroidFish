@@ -172,23 +172,23 @@ if __name__ == "__main__":
             rects.append(obj)
             rects.append(pygame.draw.rect(screen, bk_color, obj.background))
 
-        if able_record:
-            recorder.updateFrame()
-
-        if send_cam >= 0:
-            console.send({"img": pyg_stages[send_cam].img})
-
         if not is_display:
             rects.append(screen.fill([0, 0, 0]))
 
         # stage update here
         pygame.display.update(rects)
+        pgClock.tick(pglock)
+
+        if send_cam >= 0:
+            console.send({"img": pyg_stages[send_cam].img})
 
         counter += 1
-        pgClock.tick(pglock)
         if counter == pgFps:
             console.send({"fps": pgClock.get_fps()})
             counter = 0
+
+        if able_record:
+            recorder.updateFrame()
 
     pygame.quit()
     for obj in pyg_stages:

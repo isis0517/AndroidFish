@@ -1,4 +1,4 @@
-
+import screeninfo
 from Configs import *
 import json
 import time
@@ -41,11 +41,13 @@ class InitWindows(tk.Frame):
         self.path_entry.grid(column=1, row=row_num, sticky="W")
         row_num += 1
 
+        monitors = screeninfo.get_monitors()
         self.display_prompt = tk.Label(self, text="pygame display numbers:")
         self.display_prompt.grid(column=0, row=row_num, sticky="W")
-        self.display_entry = tk.Entry(self, width=4)
-        self.display_entry.insert(tk.END, 1)
-        self.display_entry.grid(column=1, row=row_num, sticky="W")
+        self.display_combo = ttk.Combobox(self, values=[f"{s} ({m.width}x{m.height})" for s, m in enumerate(monitors)]
+                                          , width=12)
+        self.display_combo.current(max(range(len(monitors)), key=lambda x: monitors[x].height))
+        self.display_combo.grid(column=1, row=row_num, sticky="W")
         row_num += 1
 
         self.pgFps_prompt = tk.Label(self, text="pygame frame rate:")
@@ -77,7 +79,7 @@ class InitWindows(tk.Frame):
             elif usage.current() == 1:
                 self.display_cams.append(self.cameras[c_num])
 
-        self.display_num = int(self.display_entry.get())
+        self.display_num = int(self.display_combo.current())
         self.workpath = self.path_entry.get()
         self.pgFps = int(self.pgFps_entry.get())
         self.port = self.arport_entry.get()

@@ -274,6 +274,7 @@ class ConfigWindow(tk.Frame):
         self.root.mainloop()
 
     def breaking(self):
+        self.schedule_state_labels[self.schedule_state["num"]]['text'] = "break"
         self.console_dict['state'] = "breaking"
         self.config['display'] = False
         self.config['light'] = False
@@ -284,6 +285,7 @@ class ConfigWindow(tk.Frame):
         """
         turn on the light and go record
         """
+        self.schedule_state_labels[self.schedule_state["num"]]['text'] = "record"
         self.config['display'] = True
         self.config['light'] = True
         self.console_dict['state'] = "recording"
@@ -447,7 +449,6 @@ class ConfigWindow(tk.Frame):
         self.schedule_event_lst.append(self.root.after(accsec * 1000, self.show_stage))
         self.schedule_event_lst.append(self.root.after(accsec * 1000, self.show_exp))
         accsec = duration_sec + 1 + accsec
-        self.schedule_event_lst.append(self.root.after(accsec * 1000, self.done))
         self.schedule_event_lst.append(self.root.after(accsec * 1000, self.end_exp))
         return accsec
 

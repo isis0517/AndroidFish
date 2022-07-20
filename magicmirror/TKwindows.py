@@ -332,7 +332,7 @@ class ConfigWindow(tk.Frame):
 
     def stage_setting(self):
         for s, cam in enumerate(self.init_cams):
-            self.config['cams'][s].update(show=self.stage_show_combos[s].current(), lag=int(self.stage_lag_entrys[s].get())
+            self.config['cams'][s].update(show=self.stage_show_combos[s].current(), lag=float(self.stage_lag_entrys[s].get())
                                           , com=self.stage_com_vars[s].get(), threshold=int(self.stage_threshold_entrys[s].get())
                                           , center= self.stage_center_entrys[s].get(), vpath=self.stage_vpath_entrys[s].get()
                                           , sdir=self.stage_sdir_entrys[s].get())

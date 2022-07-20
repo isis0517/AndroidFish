@@ -150,7 +150,12 @@ class TankStage(pygame.Rect, Recorder):
 
         lag = config["lag"]
         self.pycamera.threshold = config["threshold"]
-        self.pycamera.setDelayCount(self.fps*lag)
+        lag_frame = lag*self.fps
+        if not lag_frame == int(lag_frame):
+            print(f"Warning, the {self.model} got the not frame saved lag setting. lag = {lag} sec "
+                  f"but the frame delay = {lag_frame}")
+        lag_frame = int(lag_frame)
+        self.pycamera.setDelayCount(lag_frame)
 
         if 'center' in config:
             try:

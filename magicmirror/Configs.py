@@ -4,7 +4,7 @@ from typing import TypedDict, List
 class CamConfig(TypedDict, total=False):
     model: str
     threshold: int
-    lag: int
+    lag: float
     com: bool  # center of mass
 
 

@@ -54,7 +54,7 @@ class Recorder:
             return
 
         with open(os.path.join(self.path, "config"), 'w') as file:
-            file.write(f"{datetime.datetime.now().strftime('%Y/%d/%m %H:%M:%S')}" + "\n")
+            file.write(f"{datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')}" + "\n")
             json.dump(config, file, indent=4)
 
     def startRecord(self, filename="", duration=0):

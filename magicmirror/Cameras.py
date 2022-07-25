@@ -162,7 +162,7 @@ class PygCamera:
 
     def grabCam(self) -> None:
         try:
-            grabResult = self.camera.RetrieveResult(20, pylon.TimeoutHandling_ThrowException)
+            grabResult = self.camera.RetrieveResult(10, pylon.TimeoutHandling_ThrowException)
         except Exception as e:
             return
         if grabResult.GrabSucceeded():
@@ -198,12 +198,15 @@ class PygCamera:
 
     def read(self) -> (bool, np.ndarray):
         self.grabCam()
-        try:
+        if self.scenes:
             img = self.scenes.popleft()
-        except:
+        else:
             return False,  np.ones((self.tank_shape[1], self.tank_shape[0], 3), dtype=np.uint8)
 
         return True, img
+
+    def garbread(self):
+        return True, np.ones((self.tank_shape[0], self.tank_shape[1], 3), dtype=np.uint8)
 
     def camInit(self, camera: pylon.InstantCamera) -> (np.ndarray, np.dtype):
         if camera.GetDeviceInfo().GetModelName() == "Emulation":
@@ -219,6 +222,8 @@ class PygCamera:
                     _ = grabResult.GetImageBuffer()
             else:
                 raise Exception()
+
+            self.read = self.garbread
 
             camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
             return (shape, dtype)

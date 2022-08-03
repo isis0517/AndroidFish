@@ -170,12 +170,11 @@ class PygCamera:
             img = cv2.cvtColor(np.ndarray(self.cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2BGR)
             img = cv2.resize(img, self.tank_shape, cv2.INTER_LINEAR)
             img = cv2.medianBlur(img, 5)
-            #img = cv2.bilateralFilter(img, 5, 20, 4)
-            #img = cv2.fastNlMeansDenoisingColored(img, h=2, templateWindowSize=3, searchWindowSize=9)
-            fg = (np.max(img, axis=2) > self.threshold).astype(np.uint8)
-            #img = cv2.GaussianBlur(img, (5, 5), 1.5)
-            #img = cv2.bitwise_and(img, img, mask=fg)
+            gamma = self.dark_gamma(np.mean(img)/255)
+            lookUpTable = (np.power(np.arange(256) / 255.0, gamma) * 255).astype(np.uint8)
+            cv2.convertScaleAbs(cv2.LUT(img, lookUpTable), img, alpha=4)
 
+            fg = (np.max(img, axis=2) > self.threshold).astype(np.uint8)
             if self.COM:
                 M = cv2.moments(fg)
                 if M["m00"] == 0:
@@ -250,6 +249,10 @@ class PygCamera:
         camera.OutputQueueSize = 2
 
         return shape, dtype
+
+    @staticmethod
+    def dark_gamma(brightness):
+        return np.log(.005) / np.log(brightness)
 
     def close(self):
         self.camera.Close()

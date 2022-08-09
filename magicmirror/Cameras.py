@@ -170,9 +170,9 @@ class PygCamera:
             img = cv2.cvtColor(np.ndarray(self.cam_shape, dtype=np.uint8, buffer=buff), cv2.COLOR_BAYER_BG2BGR)
             img = cv2.resize(img, self.tank_shape, cv2.INTER_LINEAR)
             img = cv2.medianBlur(img, 5)
-            gamma = self.dark_gamma(np.mean(img)/255)
-            lookUpTable = (np.power(np.arange(256) / 255.0, gamma) * 255).astype(np.uint8)
-            cv2.convertScaleAbs(cv2.LUT(img, lookUpTable), img, alpha=5.5)
+            # gamma = 1  # self.dark_gamma(np.mean(img)/255)
+            # lookUpTable = (np.power(np.arange(256) / 255.0, gamma) * 255).astype(np.uint8)
+            cv2.convertScaleAbs(img, img, alpha=3)
 
             fg = (np.max(img, axis=2) > self.threshold).astype(np.uint8)
             if self.COM:

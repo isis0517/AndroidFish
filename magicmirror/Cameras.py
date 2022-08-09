@@ -172,7 +172,7 @@ class PygCamera:
             img = cv2.medianBlur(img, 5)
             gamma = self.dark_gamma(np.mean(img)/255)
             lookUpTable = (np.power(np.arange(256) / 255.0, gamma) * 255).astype(np.uint8)
-            cv2.convertScaleAbs(cv2.LUT(img, lookUpTable), img, alpha=4)
+            cv2.convertScaleAbs(cv2.LUT(img, lookUpTable), img, alpha=5.5)
 
             fg = (np.max(img, axis=2) > self.threshold).astype(np.uint8)
             if self.COM:
@@ -252,7 +252,7 @@ class PygCamera:
 
     @staticmethod
     def dark_gamma(brightness):
-        return np.log(.005) / np.log(brightness)
+        return np.log(.007) / np.log(brightness)
 
     def close(self):
         self.camera.Close()

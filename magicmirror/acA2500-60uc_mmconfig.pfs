@@ -66,7 +66,7 @@ ROIZoneSelector	Zone0
 BlackLevelSelector	All
 BlackLevel	0.00000
 BlackLevelSelector	All
-Gamma	0.89999
+Gamma	2.00000
 RemoveParameterLimitSelector	Gain
 RemoveParameterLimit	0
 RemoveParameterLimitSelector	ExposureTime
@@ -203,7 +203,7 @@ AutoFunctionROISelector	ROI2
 AutoFunctionROIUseBrightness	0
 AutoFunctionROISelector	ROI1
 AutoFunctionROISelector	ROI1
-AutoFunctionROIUseWhiteBalance	0
+AutoFunctionROIUseWhiteBalance	1
 AutoFunctionROISelector	ROI2
 AutoFunctionROIUseWhiteBalance	1
 AutoFunctionROISelector	ROI1

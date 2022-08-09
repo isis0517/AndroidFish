@@ -16,7 +16,7 @@ TestImageSelector	Off
 BlackLevelSelector	All
 BlackLevel	0.00000
 BlackLevelSelector	All
-Gamma	0.89999
+Gamma	2.00000
 RemoveParameterLimitSelector	Gain
 RemoveParameterLimit	0
 RemoveParameterLimitSelector	Gain
@@ -27,7 +27,7 @@ BalanceRatioSelector	Green
 BalanceRatio	1.05005
 BalanceRatioSelector	Blue
 BalanceRatio	1.66797
-BalanceRatioSelector	Green
+BalanceRatioSelector	Red
 ColorTransformationSelector	RGBtoRGB
 ColorTransformationValueSelector	Gain00
 ColorTransformationValue	1.87500

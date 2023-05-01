@@ -69,7 +69,7 @@ GainSelector	All
 BlackLevelSelector	All
 BlackLevel	0.00000
 BlackLevelSelector	All
-Gamma	1.00000
+Gamma	0.89999
 RemoveParameterLimitSelector	Gain
 RemoveParameterLimit	0
 RemoveParameterLimitSelector	ExposureTime
@@ -129,7 +129,7 @@ ColorTransformationValue	-0.75000
 ColorTransformationValueSelector	Gain22
 ColorTransformationValue	1.68750
 ColorTransformationSelector	RGBtoRGB
-ColorTransformationValueSelector	Gain11
+ColorTransformationValueSelector	Gain00
 ShutterMode	Global
 ExposureMode	Timed
 ExposureTime	25000.0

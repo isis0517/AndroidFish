@@ -172,7 +172,7 @@ class PygCamera:
             img = cv2.resize(img, self.tank_shape, cv2.INTER_LINEAR)
             # gamma = 1  # self.dark_gamma(np.mean(img)/255)
             # lookUpTable = (np.power(np.arange(256) / 255.0, gamma) * 255).astype(np.uint8)
-            cv2.convertScaleAbs(img, img, alpha=1.5)
+            cv2.convertScaleAbs(img, img, alpha=1.8, beta=-5)
 
             fg = (np.max(img, axis=2) > self.threshold).astype(np.uint8)
             if self.COM:

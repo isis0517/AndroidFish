@@ -152,6 +152,9 @@ class PygCamera:
         self.COM = False
         self.pos = (0, 0)
 
+        if self.model == "Emulation":
+            self.tank_shape = (self.shape[0], 2)
+
     def setDelayCount(self, count: int) -> None:
         if self.delaycount == count:
             return

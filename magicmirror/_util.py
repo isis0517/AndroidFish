@@ -98,7 +98,7 @@ class TankStage(pygame.Rect, Recorder):
         Recorder.__init__(self, workpath=workpath)
         self.config = CamStageConfig(model=self.pycamera.model)
         self.model = self.pycamera.model
-        self.center = (sc_shape[0] - self.pycamera.tank_shape[0] // 2, sc_shape[1] -self.pycamera.tank_shape[1] // 2)
+        self.center = (sc_shape[0] - self.pycamera.tank_shape[0] // 2, sc_shape[1] - self.pycamera.tank_shape[1] // 2)
         self.tank_shape = self.pycamera.tank_shape
         self.background = self.copy()
         self.background.height = 1000

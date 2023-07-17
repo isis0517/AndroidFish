@@ -162,8 +162,8 @@ class TankStage(pygame.Rect, Recorder):
                 center = config['center']
                 center_sparse = center[center.index("(") + 1:center.index(")")].split(",")
                 center = (int(center_sparse[0]), int(center_sparse[1]))
-                if center[0] < 0 or center[1] < 0:
-                    raise Exception()
+                # if center[0] < 0 or center[1] < 0:
+                #     raise Exception()
                 if len(center) > 2:
                     raise Exception()
                 self.center = center
